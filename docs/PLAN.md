@@ -353,7 +353,7 @@ const PATTERNS: PatternOption[] = [
     label: '2-2-5-5 Rotation',
     description: 'Most popular 50/50. Each parent gets 2 weekdays, then 5 days including a weekend.',
     compatibleSplits: ['50/50'],
-    preview: ['A','A','B','B','A','A','A','A','A','B','B','A','A','A'], // 14 days
+    preview: ['A','A','B','B','A','A','A','A','A','B','B','B','B','B'], // 14 days
   },
   // ... other patterns
 ];
@@ -652,7 +652,7 @@ Create the core hook that calculates custody ownership for any date. Start with 
 **Core Logic (2-2-5-5):**
 
 ```typescript
-const PATTERN_2_2_5_5 = ['A','A','B','B','A','A','A','A','A','B','B','A','A','A'] as const;
+const PATTERN_2_2_5_5 = ['A','A','B','B','A','A','A','A','A','B','B','B','B','B'] as const;
 // 14-day cycle, index = daysDiff % 14
 ```
 
@@ -684,7 +684,7 @@ Add 3-4-4-3, Alternating Weeks, and Every Other Weekend patterns.
 
 ```typescript
 const PATTERNS: Record<PatternType, ParentId[]> = {
-  '2-2-5-5': ['A','A','B','B','A','A','A','A','A','B','B','A','A','A'],
+  '2-2-5-5': ['A','A','B','B','A','A','A','A','A','B','B','B','B','B'],
   '3-4-4-3': ['A','A','A','B','B','B','B','A','A','A','A','B','B','B'],
   'alt-weeks': ['A','A','A','A','A','A','A','B','B','B','B','B','B','B'],
   'every-other-weekend': ['A','A','A','A','A','B','B','A','A','A','A','A','B','B'],
