@@ -20,10 +20,16 @@ export function CalendarGrid({
 }: CalendarGridProps) {
   const daysOfWeek = weekStartsOn === 'sunday' ? DAYS_OF_WEEK_SUNDAY : DAYS_OF_WEEK_MONDAY;
   
-  const displayDays = days.length === 42 ? days : generateMockDays(
-    new Date().getMonth(),
-    new Date().getFullYear()
-  );
+  // Use provided days if valid (42 cells), otherwise generate mock days
+  // If days exist but are wrong length, extract month/year from first current month day
+  const displayDays = days.length === 42 ? days : (() => {
+    const currentMonthDay = days.find(d => d.isCurrentMonth);
+    if (currentMonthDay) {
+      const [year, month] = currentMonthDay.date.split('-').map(Number);
+      return generateMockDays(month - 1, year, weekStartsOn);
+    }
+    return generateMockDays(new Date().getMonth(), new Date().getFullYear(), weekStartsOn);
+  })();
 
   return (
     <div className="overflow-hidden rounded-lg bg-white shadow">

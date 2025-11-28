@@ -1,17 +1,30 @@
 import type { CalendarDay, ParentId } from '../types';
 
-export function generateMockDays(month: number, year: number): CalendarDay[] {
+export type WeekStartsOn = 'sunday' | 'monday';
+
+export function generateMockDays(
+  month: number,
+  year: number,
+  weekStartsOn: WeekStartsOn = 'sunday'
+): CalendarDay[] {
   const days: CalendarDay[] = [];
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
   
-  const startDayOfWeek = firstDay.getDay();
+  // getDay() returns 0 for Sunday, 1 for Monday, etc.
+  // For Sunday start: use getDay() directly
+  // For Monday start: shift so Monday = 0, Sunday = 6
+  const firstDayOfWeek = firstDay.getDay();
+  const startOffset = weekStartsOn === 'sunday' 
+    ? firstDayOfWeek 
+    : (firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1);
+  
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
   
   // Fill in days from previous month
   const prevMonthLastDay = new Date(year, month, 0).getDate();
-  for (let i = startDayOfWeek - 1; i >= 0; i--) {
+  for (let i = startOffset - 1; i >= 0; i--) {
     const dayOfMonth = prevMonthLastDay - i;
     const date = new Date(year, month - 1, dayOfMonth);
     const dateStr = date.toISOString().split('T')[0];
