@@ -1,5 +1,5 @@
 import { COLOR_OPTIONS } from '../../shared/colorOptions';
-import type { ParentId } from '../../../types';
+import type { ParentId, AppState } from '../../../types';
 
 export interface ParentSetupData {
   parentAName: string;
@@ -84,5 +84,52 @@ export function getDefaultParentSetupData(): ParentSetupData {
     parentBColor: COLOR_OPTIONS[1].value, // Pink
     startDate: todayISO,
     startingParent: 'parentA',
+  };
+}
+
+/**
+ * Transform ParentSetupData to the AppState parents and config format.
+ * @param data - The parent setup data from the wizard form
+ * @returns Object containing parents config and partial app config
+ */
+export function toAppStateFormat(data: ParentSetupData): {
+  parents: AppState['parents'];
+  config: Pick<AppState['config'], 'startDate' | 'startingParent'>;
+} {
+  return {
+    parents: {
+      parentA: {
+        name: data.parentAName,
+        colorClass: data.parentAColor,
+      },
+      parentB: {
+        name: data.parentBName,
+        colorClass: data.parentBColor,
+      },
+    },
+    config: {
+      startDate: data.startDate,
+      startingParent: data.startingParent,
+    },
+  };
+}
+
+/**
+ * Transform AppState parents and config to ParentSetupData format.
+ * @param parents - The parents configuration from AppState
+ * @param config - The app config containing startDate and startingParent
+ * @returns ParentSetupData for use in the wizard form
+ */
+export function fromAppStateFormat(
+  parents: AppState['parents'],
+  config: Pick<AppState['config'], 'startDate' | 'startingParent'>
+): ParentSetupData {
+  return {
+    parentAName: parents.parentA.name,
+    parentBName: parents.parentB.name,
+    parentAColor: parents.parentA.colorClass,
+    parentBColor: parents.parentB.colorClass,
+    startDate: config.startDate,
+    startingParent: config.startingParent,
   };
 }

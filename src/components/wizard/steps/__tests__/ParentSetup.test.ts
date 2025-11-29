@@ -1,14 +1,26 @@
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { 
   validateParentSetup, 
   isParentSetupValid, 
   getDefaultParentSetupData,
+  toAppStateFormat,
+  fromAppStateFormat,
   type ParentSetupData 
 } from '../parentSetupUtils';
 import { COLOR_OPTIONS } from '../../../shared/colorOptions';
 
 describe('ParentSetup', () => {
   describe('getDefaultParentSetupData', () => {
+    beforeEach(() => {
+      // Mock Date to avoid flaky tests at midnight
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2024-01-15T12:00:00'));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     test('returns data with default values', () => {
       const data = getDefaultParentSetupData();
       
@@ -21,9 +33,8 @@ describe('ParentSetup', () => {
 
     test('returns today\'s date as start date', () => {
       const data = getDefaultParentSetupData();
-      const today = new Date().toISOString().split('T')[0];
       
-      expect(data.startDate).toBe(today);
+      expect(data.startDate).toBe('2024-01-15');
     });
 
     test('returns different colors for parents', () => {
@@ -217,6 +228,66 @@ describe('ParentSetup', () => {
 
       expect(dataA.startingParent).toBe('parentA');
       expect(dataB.startingParent).toBe('parentB');
+    });
+  });
+
+  describe('toAppStateFormat', () => {
+    test('transforms ParentSetupData to AppState format', () => {
+      const data: ParentSetupData = {
+        parentAName: 'Alice',
+        parentBName: 'Bob',
+        parentAColor: 'bg-blue-500',
+        parentBColor: 'bg-pink-500',
+        startDate: '2024-01-01',
+        startingParent: 'parentA',
+      };
+
+      const result = toAppStateFormat(data);
+
+      expect(result.parents.parentA.name).toBe('Alice');
+      expect(result.parents.parentA.colorClass).toBe('bg-blue-500');
+      expect(result.parents.parentB.name).toBe('Bob');
+      expect(result.parents.parentB.colorClass).toBe('bg-pink-500');
+      expect(result.config.startDate).toBe('2024-01-01');
+      expect(result.config.startingParent).toBe('parentA');
+    });
+  });
+
+  describe('fromAppStateFormat', () => {
+    test('transforms AppState format to ParentSetupData', () => {
+      const parents = {
+        parentA: { name: 'Alice', colorClass: 'bg-blue-500' },
+        parentB: { name: 'Bob', colorClass: 'bg-pink-500' },
+      };
+      const config = {
+        startDate: '2024-01-01',
+        startingParent: 'parentA' as const,
+      };
+
+      const result = fromAppStateFormat(parents, config);
+
+      expect(result.parentAName).toBe('Alice');
+      expect(result.parentBName).toBe('Bob');
+      expect(result.parentAColor).toBe('bg-blue-500');
+      expect(result.parentBColor).toBe('bg-pink-500');
+      expect(result.startDate).toBe('2024-01-01');
+      expect(result.startingParent).toBe('parentA');
+    });
+
+    test('round-trip transformation preserves data', () => {
+      const original: ParentSetupData = {
+        parentAName: 'Sarah',
+        parentBName: 'John',
+        parentAColor: 'bg-green-500',
+        parentBColor: 'bg-purple-500',
+        startDate: '2024-06-15',
+        startingParent: 'parentB',
+      };
+
+      const appState = toAppStateFormat(original);
+      const result = fromAppStateFormat(appState.parents, appState.config);
+
+      expect(result).toEqual(original);
     });
   });
 });
