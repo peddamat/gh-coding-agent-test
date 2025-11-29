@@ -7,6 +7,13 @@ import type { PatternType } from './types';
 import type { SplitType } from './data/patterns';
 import type { ParentSetupData, HolidaySelection } from './components/wizard';
 
+/** Static wizard steps configuration - defined outside component to avoid recreation on each render */
+const WIZARD_STEPS = [
+  { title: 'Choose Schedule', description: 'Select a custody schedule pattern' },
+  { title: 'Parent Setup', description: 'Configure parent information' },
+  { title: 'Holiday Settings', description: 'Set holiday custody rules' },
+];
+
 /**
  * Wizard content component that uses WizardContext.
  * Separated from AppContent to ensure context is available.
@@ -32,15 +39,9 @@ function WizardContent({
     dispatch({ type: 'SET_HOLIDAYS', payload: holidaySelections });
   };
 
-  const wizardSteps = [
-    { title: 'Choose Schedule', description: 'Select a custody schedule pattern' },
-    { title: 'Parent Setup', description: 'Configure parent information' },
-    { title: 'Holiday Settings', description: 'Set holiday custody rules' },
-  ];
-
   return (
     <WizardContainer
-      steps={wizardSteps}
+      steps={WIZARD_STEPS}
       onFinish={onFinish}
       onCancel={onCancel}
     >

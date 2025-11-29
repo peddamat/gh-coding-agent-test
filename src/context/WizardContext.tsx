@@ -60,7 +60,7 @@ export function WizardProvider({ children, initialState }: WizardProviderProps) 
     dispatch,
     toAppState: () => convertWizardToAppState(state),
     reset: () => dispatch({ type: 'RESET', payload: createInitialWizardState() }),
-  }), [state, dispatch]);
+  }), [state]);
 
   return (
     <WizardContext.Provider value={contextValue}>

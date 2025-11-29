@@ -50,8 +50,11 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
       };
     case 'RESET':
       return action.payload;
-    default:
+    default: {
+      // Exhaustive check - TypeScript will error if a new action type is added but not handled
+      action satisfies never;
       return state;
+    }
   }
 }
 
