@@ -28,8 +28,8 @@ export const HOLIDAYS: HolidayDefinition[] = [
 ];
 
 /**
- * Get the default holiday selections (all unassigned initially).
- * Returns selections with 'alternate' as the default assignment.
+ * Get the default holiday selections.
+ * Returns selections with 'alternate' as the default assignment for all holidays.
  */
 export function getDefaultHolidaySelections(): HolidaySelection[] {
   return HOLIDAYS.map((holiday) => ({
