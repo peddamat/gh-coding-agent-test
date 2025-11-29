@@ -85,7 +85,16 @@ Define all core TypeScript interfaces per [CONTEXT.md](../CONTEXT.md) Section 3.
 
 ```typescript
 export type ParentId = 'parentA' | 'parentB';
-export type PatternType = '2-2-5-5' | '3-4-4-3' | 'alt-weeks' | 'every-other-weekend';
+export type PatternType = 
+  | 'alt-weeks'        // 50/50 - Alternating weeks (7-7)
+  | '2-2-3'            // 50/50 - 2-2-3 rotation
+  | '2-2-5-5'          // 50/50 - 2-2-5-5 rotation
+  | '3-4-4-3'          // 50/50 - 3-4-4-3 rotation
+  | 'every-weekend'    // 60/40 - Non-custodial parent gets every weekend
+  | 'every-other-weekend'      // 80/20 - Non-custodial parent gets alternating weekends
+  | 'same-weekends-monthly'    // 80/20 - Non-custodial parent gets 1st/3rd/5th weekends
+  | 'all-to-one'       // 100/0 - Full custody to one parent
+  | 'custom';          // Custom repeating rate
 
 export interface ParentConfig {
   name: string;
@@ -279,6 +288,8 @@ Wire up all components into `App.tsx` to display the complete static calendar.
 
 #### Issue #8: Create WizardContainer Component
 
+> **GitHub:** [Issue #19](https://github.com/peddamat/gh-coding-agent-test/issues/19)
+
 **Labels:** `ui`, `priority:high`
 
 **Description:**
@@ -298,77 +309,139 @@ Build the wizard shell with step indicators and navigation buttons.
 - `src/components/wizard/StepIndicator.tsx`
 - `src/components/wizard/index.ts`
 
-**Blocked By:** Issue #1
+**Blocked By:** Issue #1 (GitHub #1)
 
 ---
 
-#### Issue #9: Create Step 1 - TimeSplitSelector
+#### Issue #9: Create PatternPicker Step (Combines Split + Pattern Selection)
+
+> **GitHub:** [Issue #20](https://github.com/peddamat/gh-coding-agent-test/issues/20), [Issue #23](https://github.com/peddamat/gh-coding-agent-test/issues/23)
 
 **Labels:** `ui`, `priority:high`
 
 **Description:**
-First wizard step where user selects desired custody split.
+First wizard step showing all schedule patterns grouped by custody split percentage. Selecting a pattern implicitly sets the split—no separate split selector needed.
 
 **Acceptance Criteria:**
 
-- [ ] Radio card options: "50/50", "60/40", "70/30", "80/20"
-- [ ] Visual cards with percentage visualization
-- [ ] Selection stored in wizard state
-- [ ] Pre-selects "50/50" as default
-
-**Files to Create:**
-
-- `src/components/wizard/steps/TimeSplitSelector.tsx`
-
-**Blocked By:** Issue #8
-
----
-
-#### Issue #10: Create Step 2 - PatternPicker with Thumbnails
-
-**Labels:** `ui`, `priority:high`
-
-**Description:**
-Second wizard step showing visual schedule pattern options.
-
-**Acceptance Criteria:**
-
-- [ ] Card for each pattern: 2-2-5-5, 3-4-4-3, Alternating Weeks, Every Other Weekend
-- [ ] Each card shows mini-calendar thumbnail (2-week preview)
-- [ ] Brief description under each (e.g., "2-2-5-5: Most popular 50/50 schedule")
-- [ ] Filters patterns based on Step 1 split selection
-- [ ] Hover state shows expanded description
+- [ ] Patterns grouped visually: "50/50 Schedules", "60/40 Schedules", "80/20 Schedules", "Full Custody"
+- [ ] Card for each pattern with mini-calendar thumbnail (2-week preview)
+- [ ] Each card shows: pattern name, split percentage badge, brief description
+- [ ] Selecting a pattern stores both pattern AND split in wizard state
+- [ ] Hover/tap shows expanded description
+- [ ] "Custom" option at bottom opens custom pattern builder (placeholder for MVP)
 
 **Files to Create:**
 
 - `src/components/wizard/steps/PatternPicker.tsx`
 - `src/components/wizard/steps/PatternThumbnail.tsx`
+- `src/data/patterns.ts` (pattern definitions)
 
-**Pattern Thumbnails Data:**
+**Pattern Definitions:**
 
 ```typescript
-const PATTERNS: PatternOption[] = [
+interface PatternDefinition {
+  type: PatternType;
+  label: string;
+  split: string; // "50/50", "60/40", "80/20", "100/0"
+  description: string;
+  cycleLength: number;
+  pattern: ParentId[];
+}
+
+export const PATTERNS: PatternDefinition[] = [
+  // 50/50 Schedules
+  {
+    type: 'alt-weeks',
+    label: 'Every Other Week',
+    split: '50/50',
+    description: 'Simplest 50/50. Full week with each parent, alternating.',
+    cycleLength: 14,
+    pattern: ['A','A','A','A','A','A','A','B','B','B','B','B','B','B'],
+  },
+  {
+    type: '2-2-3',
+    label: '2-2-3 Rotation',
+    split: '50/50',
+    description: 'Parent A: Mon-Tue, Parent B: Wed-Thu, Alternating Fri-Sun.',
+    cycleLength: 14,
+    pattern: ['A','A','B','B','A','A','A','B','B','A','A','B','B','B'],
+  },
   {
     type: '2-2-5-5',
     label: '2-2-5-5 Rotation',
-    description: 'Most popular 50/50. Each parent gets 2 weekdays, then 5 days including a weekend.',
-    compatibleSplits: ['50/50'],
-    preview: ['A','A','B','B','A','A','A','A','A','B','B','B','B','B'], // 14 days
+    split: '50/50',
+    description: 'Most popular 50/50. Two days each, then five days each.',
+    cycleLength: 14,
+    pattern: ['A','A','B','B','A','A','A','A','A','B','B','B','B','B'],
   },
-  // ... other patterns
+  {
+    type: '3-4-4-3',
+    label: '3-4-4-3 Rotation',
+    split: '50/50',
+    description: 'Three days, then four days, swapping the next week.',
+    cycleLength: 14,
+    pattern: ['A','A','A','B','B','B','B','A','A','A','A','B','B','B'],
+  },
+  // 60/40 Schedule
+  {
+    type: 'every-weekend',
+    label: 'Every Weekend',
+    split: '60/40',
+    description: 'Primary parent has weekdays. Other parent has every weekend.',
+    cycleLength: 7,
+    pattern: ['A','A','A','A','A','B','B'],
+  },
+  // 80/20 Schedules
+  {
+    type: 'every-other-weekend',
+    label: 'Every Other Weekend',
+    split: '80/20',
+    description: 'Primary custody with alternating weekend visitation.',
+    cycleLength: 14,
+    pattern: ['A','A','A','A','A','B','B','A','A','A','A','A','A','A'],
+  },
+  {
+    type: 'same-weekends-monthly',
+    label: 'Same Weekends Each Month',
+    split: '80/20',
+    description: '1st, 3rd, and 5th weekends to non-custodial parent.',
+    cycleLength: 7, // Special handling required for 1st/3rd/5th logic
+    pattern: ['A','A','A','A','A','A','A'], // Base pattern, weekends calculated dynamically
+  },
+  // 100/0 Schedule
+  {
+    type: 'all-to-one',
+    label: 'All to One Parent',
+    split: '100/0',
+    description: 'Full custody to one parent. No scheduled visitation.',
+    cycleLength: 1,
+    pattern: ['A'],
+  },
+  // Custom
+  {
+    type: 'custom',
+    label: 'Custom Repeating Rate',
+    split: 'Custom',
+    description: 'Define your own repeating pattern.',
+    cycleLength: 0, // User-defined
+    pattern: [],
+  },
 ];
 ```
 
-**Blocked By:** Issue #8
+**Blocked By:** Issue #8 (GitHub #19)
 
 ---
 
-#### Issue #11: Create Step 3 - ParentSetup Form
+#### Issue #10: Create Step 2 - ParentSetup Form
+
+> **GitHub:** [Issue #21](https://github.com/peddamat/gh-coding-agent-test/issues/21)
 
 **Labels:** `ui`, `priority:high`
 
 **Description:**
-Third wizard step for parent names, colors, and schedule start date.
+Second wizard step for parent names, colors, and schedule start date.
 
 **Acceptance Criteria:**
 
@@ -396,16 +469,18 @@ const COLOR_OPTIONS = [
 ];
 ```
 
-**Blocked By:** Issue #8
+**Blocked By:** Issue #8 (GitHub #19)
 
 ---
 
-#### Issue #12: Create Step 4 - HolidaySelector (MVP Placeholder)
+#### Issue #11: Create Step 3 - HolidaySelector (MVP Placeholder)
+
+> **GitHub:** [Issue #24](https://github.com/peddamat/gh-coding-agent-test/issues/24)
 
 **Labels:** `ui`, `priority:medium`
 
 **Description:**
-Fourth wizard step for selecting major holidays. MVP version is simplified checklist.
+Third wizard step for selecting major holidays. MVP version is simplified checklist.
 
 **Acceptance Criteria:**
 
@@ -431,11 +506,13 @@ const HOLIDAYS = [
 ];
 ```
 
-**Blocked By:** Issue #8
+**Blocked By:** Issue #8 (GitHub #19)
 
 ---
 
-#### Issue #13: Create Wizard State Management with Context
+#### Issue #12: Create Wizard State Management with Context
+
+> **GitHub:** [Issue #25](https://github.com/peddamat/gh-coding-agent-test/issues/25)
 
 **Labels:** `state`, `priority:high`
 
@@ -445,7 +522,7 @@ Create React Context + useReducer for wizard form state.
 **Acceptance Criteria:**
 
 - [ ] `WizardContext` provides state and dispatch
-- [ ] Actions: SET_SPLIT, SET_PATTERN, SET_PARENTS, SET_HOLIDAYS, RESET
+- [ ] Actions: SET_PATTERN (includes split), SET_PARENTS, SET_HOLIDAYS, RESET
 - [ ] State persists across step navigation
 - [ ] "Finish" action converts wizard state to AppState
 
@@ -454,11 +531,13 @@ Create React Context + useReducer for wizard form state.
 - `src/context/WizardContext.tsx`
 - `src/reducers/wizardReducer.ts`
 
-**Blocked By:** Issue #2
+**Blocked By:** Issue #2 (GitHub #2)
 
 ---
 
-#### Issue #14: Integrate Wizard into App with Route/Modal
+#### Issue #13: Integrate Wizard into App with Route/Modal
+
+> **GitHub:** [Issue #22](https://github.com/peddamat/gh-coding-agent-test/issues/22)
 
 **Labels:** `ui`, `priority:high`
 
@@ -471,13 +550,14 @@ Add wizard to app flow. Show wizard on first visit or via "New Schedule" button.
 - [ ] "Start New Schedule" button in header opens wizard
 - [ ] Completing wizard dismisses it and shows calendar
 - [ ] Calendar uses wizard output (still mock calculation)
+- [ ] Wizard is now 3 steps: Pattern → Parents → Holidays
 
 **Files to Modify:**
 
 - `src/App.tsx`
 - `src/components/layout/Header.tsx`
 
-**Blocked By:** Issues #8-13
+**Blocked By:** Issues #8-12 (GitHub #19, #20, #21, #24, #25)
 
 ---
 
@@ -629,50 +709,66 @@ Update App.tsx to show calendar + stats side-by-side on desktop.
 
 ---
 
-#### Issue #20: Create useCustodyEngine Hook - Base Structure
+#### Issue #19: Create useCustodyEngine Hook - Base Structure
 
 **Labels:** `logic`, `priority:critical`
 
 **Description:**
-Create the core hook that calculates custody ownership for any date. Start with 2-2-5-5 pattern only.
+Create the core hook that calculates custody ownership for any date. Implement pattern-based calculation that works for all supported patterns.
 
 **Acceptance Criteria:**
 
 - [ ] Hook accepts `AppConfig` and returns calculation functions
-- [ ] `getOwnerForDate(date: string): ParentId` works for 2-2-5-5
+- [ ] `getOwnerForDate(date: string): ParentId` works for all standard patterns
 - [ ] `getMonthDays(year: number, month: number): CalendarDay[]` returns full month
 - [ ] Handles leap years correctly
-- [ ] Unit test: 5-year span shows no drift
+- [ ] Special handling for `same-weekends-monthly` (1st/3rd/5th weekend logic)
+- [ ] Unit test: 5-year span shows no drift for each pattern
 
 **Files to Create:**
 
 - `src/hooks/useCustodyEngine.ts`
 - `src/hooks/useCustodyEngine.test.ts`
 
-**Core Logic (2-2-5-5):**
+**Import patterns from data file:**
 
 ```typescript
-const PATTERN_2_2_5_5 = ['A','A','B','B','A','A','A','A','A','B','B','B','B','B'] as const;
-// 14-day cycle, index = daysDiff % 14
+import { PATTERNS } from '../data/patterns';
+
+function getOwnerForDate(date: string, config: AppConfig): ParentId {
+  const pattern = PATTERNS.find(p => p.type === config.selectedPattern);
+  if (!pattern || pattern.type === 'custom') {
+    // Handle custom patterns separately
+  }
+  
+  // Special case: same-weekends-monthly requires week-of-month calculation
+  if (pattern.type === 'same-weekends-monthly') {
+    return getSameWeekendsOwner(date, config);
+  }
+  
+  const daysDiff = calculateDaysDifference(date, config.startDate);
+  const index = daysDiff % pattern.cycleLength;
+  return pattern.pattern[index] === 'A' ? config.startingParent : getOtherParent(config.startingParent);
+}
 ```
 
 **Blocked By:** Issue #2
 
 ---
 
-#### Issue #21: Implement Remaining Patterns in useCustodyEngine
+#### Issue #20: Implement Special Pattern Logic in useCustodyEngine
 
 **Labels:** `logic`, `priority:high`
 
 **Description:**
-Add 3-4-4-3, Alternating Weeks, and Every Other Weekend patterns.
+Implement special-case patterns that require dynamic calculation beyond simple modulo.
 
 **Acceptance Criteria:**
 
-- [ ] `3-4-4-3` pattern: 14-day cycle with correct array
-- [ ] `alt-weeks` pattern: 14-day cycle [A×7, B×7]
-- [ ] `every-other-weekend`: 14-day cycle, Parent B gets weekends
-- [ ] Pattern selection based on `config.selectedPattern`
+- [ ] `same-weekends-monthly`: Calculate 1st/3rd/5th weekend of each month dynamically
+- [ ] `custom`: Support user-defined cycle length and pattern array
+- [ ] `all-to-one`: Simple single-parent assignment (trivial but must work)
+- [ ] Handle "5th weekend" edge case correctly (some months have 5 weekends)
 - [ ] All patterns unit tested
 
 **Files to Modify:**
@@ -680,22 +776,36 @@ Add 3-4-4-3, Alternating Weeks, and Every Other Weekend patterns.
 - `src/hooks/useCustodyEngine.ts`
 - `src/hooks/useCustodyEngine.test.ts`
 
-**Pattern Arrays:**
+**Special Logic for 1st/3rd/5th Weekends:**
 
 ```typescript
-const PATTERNS: Record<PatternType, ParentId[]> = {
-  '2-2-5-5': ['A','A','B','B','A','A','A','A','A','B','B','B','B','B'],
-  '3-4-4-3': ['A','A','A','B','B','B','B','A','A','A','A','B','B','B'],
-  'alt-weeks': ['A','A','A','A','A','A','A','B','B','B','B','B','B','B'],
-  'every-other-weekend': ['A','A','A','A','A','B','B','A','A','A','A','A','B','B'],
-};
+function getSameWeekendsOwner(date: string, config: AppConfig): ParentId {
+  const d = new Date(date + 'T00:00:00');
+  const dayOfWeek = d.getDay(); // 0 = Sunday, 6 = Saturday
+  const dayOfMonth = d.getDate();
+  
+  // Only weekends (Sat/Sun) go to Parent B
+  if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+    return 'parentA'; // Weekdays always Parent A
+  }
+  
+  // Calculate which weekend of the month (1st, 2nd, 3rd, 4th, or 5th)
+  const weekendNumber = Math.ceil(dayOfMonth / 7);
+  
+  // 1st, 3rd, 5th weekends go to Parent B
+  if (weekendNumber === 1 || weekendNumber === 3 || weekendNumber === 5) {
+    return 'parentB';
+  }
+  
+  return 'parentA';
+}
 ```
 
-**Blocked By:** Issue #20
+**Blocked By:** Issue #19
 
 ---
 
-#### Issue #22: Wire CalendarGrid to useCustodyEngine
+#### Issue #21: Wire CalendarGrid to useCustodyEngine
 
 **Labels:** `integration`, `priority:critical`
 
@@ -715,11 +825,11 @@ Replace mock data in CalendarGrid with real calculated data from hook.
 - `src/components/calendar/CalendarGrid.tsx`
 - `src/App.tsx`
 
-**Blocked By:** Issues #20, #21
+**Blocked By:** Issues #19, #20
 
 ---
 
-#### Issue #23: Calculate and Display Real Timeshare Stats
+#### Issue #22: Calculate and Display Real Timeshare Stats
 
 **Labels:** `integration`, `priority:high`
 
@@ -732,6 +842,7 @@ Wire stats panel to real calculation engine.
 - [ ] Bar chart shows real monthly breakdown
 - [ ] Stats update when pattern or dates change
 - [ ] "Nights per year" calculated correctly
+- [ ] Handles all pattern types including `same-weekends-monthly`
 
 **Files to Modify:**
 
@@ -742,12 +853,12 @@ Wire stats panel to real calculation engine.
 
 ```typescript
 const calculateYearlyStats = (startDate: string, pattern: PatternType): TimeshareStats => {
-  // Count 365 days from startDate
+  // Count 365 days from startDate using useCustodyEngine
   // Return { parentA: { days, percentage }, parentB: { days, percentage } }
 };
 ```
 
-**Blocked By:** Issue #20
+**Blocked By:** Issue #19
 
 ---
 
@@ -757,7 +868,7 @@ const calculateYearlyStats = (startDate: string, pattern: PatternType): Timeshar
 
 ---
 
-#### Issue #24: Create useLocalStorage Hook
+#### Issue #23: Create useLocalStorage Hook
 
 **Labels:** `logic`, `priority:high`
 
@@ -779,7 +890,7 @@ Generic hook for localStorage persistence per [CONTEXT.md](../CONTEXT.md).
 
 ---
 
-#### Issue #25: Create AppState Context with Persistence
+#### Issue #24: Create AppState Context with Persistence
 
 **Labels:** `state`, `priority:high`
 
@@ -799,11 +910,11 @@ Global app state context that persists to localStorage.
 - `src/context/AppStateContext.tsx`
 - `src/reducers/appStateReducer.ts`
 
-**Blocked By:** Issues #2, #24
+**Blocked By:** Issues #2, #23
 
 ---
 
-#### Issue #26: Integrate AppState Across All Components
+#### Issue #25: Integrate AppState Across All Components
 
 **Labels:** `integration`, `priority:high`
 
@@ -825,7 +936,7 @@ Wire all components to use centralized AppState.
 - `src/components/calendar/CalendarGrid.tsx`
 - `src/components/stats/StatsPanel.tsx`
 
-**Blocked By:** Issue #25
+**Blocked By:** Issue #24
 
 ---
 
@@ -835,7 +946,7 @@ Wire all components to use centralized AppState.
 
 ---
 
-#### Issue #27: Create PlanBuilder Shell Component
+#### Issue #26: Create PlanBuilder Shell Component
 
 **Labels:** `ui`, `priority:medium`
 
@@ -858,7 +969,7 @@ Container for the parenting plan builder interface.
 
 ---
 
-#### Issue #28: Create Provision Category Components
+#### Issue #27: Create Provision Category Components
 
 **Labels:** `ui`, `priority:medium`
 
@@ -879,11 +990,11 @@ UI for selecting and configuring provisions by category.
 - `src/components/plan/ProvisionToggle.tsx`
 - `src/data/provisions.ts` (static provision library)
 
-**Blocked By:** Issue #27
+**Blocked By:** Issue #26
 
 ---
 
-#### Issue #29: Implement Schedule-to-Text Generator
+#### Issue #28: Implement Schedule-to-Text Generator
 
 **Labels:** `logic`, `priority:medium`
 
@@ -904,7 +1015,7 @@ Generate natural language description of custody schedule from config.
 
 **Example Output:**
 
-```
+```text
 "The parents shall share physical custody of the children according to 
 a 2-2-5-5 schedule. The rotation shall commence on January 1, 2025. 
 John shall have the children for two days, followed by Sarah for two days. 
@@ -916,7 +1027,7 @@ five days. All exchanges shall occur at 3:00 PM."
 
 ---
 
-#### Issue #30: Implement Copy & Download Export
+#### Issue #29: Implement Copy & Download Export
 
 **Labels:** `feature`, `priority:medium`
 
@@ -938,11 +1049,11 @@ Export functionality for the generated plan text.
 
 - `src/components/plan/PlanBuilder.tsx`
 
-**Blocked By:** Issue #29
+**Blocked By:** Issue #28
 
 ---
 
-#### Issue #31: Add Plan Builder to App Navigation
+#### Issue #30: Add Plan Builder to App Navigation
 
 **Labels:** `ui`, `priority:medium`
 
@@ -960,7 +1071,7 @@ Integrate Plan Builder as tab or route in main app.
 - `src/App.tsx`
 - `src/components/layout/Header.tsx`
 
-**Blocked By:** Issue #27
+**Blocked By:** Issue #26
 
 ---
 

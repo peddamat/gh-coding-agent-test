@@ -323,11 +323,71 @@ Not in MVP, but architecture should not preclude this.
 
 ## Standard Custody Patterns
 
-### 1. The 2-2-5-5 Rotation (Most Popular 50/50)
+The application supports 9 standard custody patterns covering the full spectrum from 50/50 to 100/0 splits, plus a custom option.
+
+### 1. Every Other Week / Alternating Weeks (50/50)50)
+
+**Visual Pattern:**
+
+```text
+Week 1:  M  T  W  T  F  S  S
+         A  A  A  A  A  A  A
+
+Week 2:  M  T  W  T  F  S  S
+         B  B  B  B  B  B  B
+```
+
+**Pros:**
+
+- Simplest to remember
+- Longest stretches (good for bonding)
+- Easiest for school (only one transition per week)
+
+**Cons:**
+
+- Long gaps between visits (7 days without seeing child)
+- Can be hard for younger children
+
+**Implementation:**
+
+```typescript
+const PATTERN_ALT_WEEKS: ParentId[] = [
+  'A', 'A', 'A', 'A', 'A', 'A', 'A', 'B', 'B', 'B', 'B', 'B', 'B', 'B'
+];
+```
+
+### 2. The 2-2-3 Rotation (50/50)
 
 **Visual Pattern (2 weeks):**
 
+```text
+Week 1:  M  T | W  T | F  S  S
+         A  A | B  B | A  A  A
+
+Week 2:  M  T | W  T | F  S  S
+         B  B | A  A | B  B  B
 ```
+
+**Why It's Used:**
+
+- Parent A always has Mon-Tue
+- Parent B always has Wed-Thu
+- Weekends alternate (Fri-Sun)
+- Predictable weekday schedule with rotating weekends
+
+**Implementation:**
+
+```typescript
+const PATTERN_2_2_3: ParentId[] = [
+  'A', 'A', 'B', 'B', 'A', 'A', 'A', 'B', 'B', 'A', 'A', 'B', 'B', 'B'
+];
+```
+
+### 3. The 2-2-5-5 Rotation (50/50 - Most Popular)r)
+
+**Visual Pattern (2 weeks):**
+
+```text
 Week 1:  M  T | W  T | F  S  S  M  T
          A  A | B  B | A  A  A  A  A
 
@@ -364,11 +424,11 @@ function getOwner(date: string, startDate: string, startDayOfWeek: number) {
 }
 ```
 
-### 2. The 3-4-4-3 Schedule (Alternative 50/50)
+### 4. The 3-4-4-3 Schedule (50/50)
 
 **Visual Pattern (2 weeks):**
 
-```
+```text
 Week 1:  M  T  W | T  F  S  S
          A  A  A | B  B  B  B
 
@@ -389,42 +449,34 @@ const PATTERN_3_4_4_3: ParentId[] = [
 ];
 ```
 
-### 3. Alternating Weeks (7-7 Split)
+### 5. Every Weekend (60/40)
 
 **Visual Pattern:**
 
-```
-Week 1:  M  T  W  T  F  S  S
-         A  A  A  A  A  A  A
-
-Week 2:  M  T  W  T  F  S  S
-         B  B  B  B  B  B  B
+```text
+Every Week:  M  T  W  T  F | S  S
+             A  A  A  A  A | B  B
 ```
 
-**Pros:**
+**Used When:**
 
-- Simplest to remember
-- Longest stretches (good for bonding)
-- Easiest for school (only one transition per week)
-
-**Cons:**
-
-- Long gaps between visits (7 days without seeing child)
-- Can be hard for younger children
+- Primary parent works traditional Mon-Fri schedule
+- Non-custodial parent wants consistent weekend time
+- Reduces weekday transitions for school-age children
 
 **Implementation:**
 
 ```typescript
-const PATTERN_ALT_WEEKS: ParentId[] = [
-  'A', 'A', 'A', 'A', 'A', 'A', 'A', 'B', 'B', 'B', 'B', 'B', 'B', 'B'
+const PATTERN_EVERY_WEEKEND: ParentId[] = [
+  'A', 'A', 'A', 'A', 'A', 'B', 'B'
 ];
 ```
 
-### 4. Every Other Weekend (80/20 - Primary Custody)
+### 6. Every Other Weekend (80/20)
 
 **Visual Pattern:**
 
-```
+```text
 Week 1:  M  T  W  T  F | S  S
          A  A  A  A  A | B  B
 
@@ -438,20 +490,92 @@ Week 2:  M  T  W  T  F  S  S
 - Other parent has "visitation rights"
 - Distance between homes makes frequent exchanges impractical
 
-**Configuration Options:**
+**Implementation:**
 
-- **Simple Alternating:** Every 2nd weekend (e.g., 1st and 3rd of month)
-- **Fixed Weekends:** Specific weekends (e.g., 1st, 3rd, and 5th)
+```typescript
+const PATTERN_EVERY_OTHER_WEEKEND: ParentId[] = [
+  'A', 'A', 'A', 'A', 'A', 'B', 'B', 'A', 'A', 'A', 'A', 'A', 'A', 'A'
+];
+```
 
-**The "5th Weekend Problem:"**
+### 7. Same Weekends Each Month (80/20)
+
+**Visual Pattern:**
+
+```text
+1st weekend:  Parent B
+2nd weekend:  Parent A  
+3rd weekend:  Parent B
+4th weekend:  Parent A
+5th weekend:  Parent B (when applicable)
+```
+
+**Used When:**
+
+- Non-custodial parent wants predictable, fixed weekends
+- Easier to plan recurring activities (e.g., "I always have 1st and 3rd weekends")
+
+**The "5th Weekend Problem":**
 Some months have 5 weekends. With "1st, 3rd, 5th" rule, the non-custodial parent gets 3 weekends that month (closer to 40/60). With strict alternating, they get only 2 weekends (20/80).
 
 **Implementation:**
 
 ```typescript
-const PATTERN_EVERY_OTHER_WEEKEND: ParentId[] = [
-  'A', 'A', 'A', 'A', 'A', 'B', 'B', 'A', 'A', 'A', 'A', 'A', 'B', 'B'
-];
+function getSameWeekendsOwner(date: string): ParentId {
+  const d = new Date(date + 'T00:00:00');
+  const dayOfWeek = d.getDay();
+  const dayOfMonth = d.getDate();
+  
+  // Weekdays always Parent A
+  if (dayOfWeek !== 0 && dayOfWeek !== 6) return 'parentA';
+  
+  // Calculate which weekend (1st, 2nd, 3rd, 4th, 5th)
+  const weekendNumber = Math.ceil(dayOfMonth / 7);
+  
+  // 1st, 3rd, 5th weekends → Parent B
+  return (weekendNumber % 2 === 1) ? 'parentB' : 'parentA';
+}
+```
+
+### 8. All to One Parent (100/0)
+
+**Visual Pattern:**
+
+```text
+Every Day:  A  A  A  A  A  A  A
+```
+
+**Used When:**
+
+- Sole custody situations
+- Safety concerns prevent visitation
+- Other parent is geographically distant
+
+**Implementation:**
+
+```typescript
+const PATTERN_ALL_TO_ONE: ParentId[] = ['A'];
+```
+
+### 9. Custom Repeating Rate
+
+**Description:**
+Allows users to define their own repeating pattern with custom cycle length.
+
+**Configuration:**
+
+- User specifies cycle length (e.g., 21 days)
+- User "paints" each day in the cycle as Parent A or B
+- Pattern repeats indefinitely from start date
+
+**Implementation:**
+
+```typescript
+interface CustomPattern {
+  type: 'custom';
+  cycleLength: number;
+  pattern: ParentId[];
+}
 ```
 
 ---
@@ -468,13 +592,13 @@ Different courts use different standards to calculate custody percentage. The sy
 
 **Formula:**
 
-```
+```text
 Parent A % = (Total Hours Parent A / Total Hours in Period) × 100
 ```
 
 **Example Calculation:**
 
-```
+```text
 Period: Jan 1 - Jan 31 (31 days = 744 hours)
 Parent A: 372 hours (15.5 days)
 Parent B: 372 hours (15.5 days)
@@ -510,13 +634,13 @@ If child is at school Mon-Fri, 8 AM - 3 PM (7 hours):
 
 **Formula:**
 
-```
+```text
 Parent A % = (Days with overnight custody / Total Days) × 100
 ```
 
 **Example Calculation:**
 
-```
+```text
 Period: Jan 1 - Jan 31 (31 days)
 Parent A: 16 overnights
 Parent B: 15 overnights
@@ -529,7 +653,7 @@ Result: 51.6% / 48.4%
 
 2. **Partial Day Credit (Virginia Rule):** Some jurisdictions count a visit longer than 4 hours but less than overnight as 0.5 days:
 
-   ```
+   ```text
    If visit = 5 hours (no overnight): Credit 0.5 days
    If visit < 4 hours: Credit 0 days
    ```

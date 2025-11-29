@@ -60,12 +60,29 @@ const nextDay = new Date(Date.now() + 86400000);
 ### Pattern Implementation
 
 ```typescript
-const PATTERNS: Record<PatternType, ParentId[]> = {
+// Standard patterns with fixed cycle arrays
+const PATTERNS: Record<Exclude<PatternType, 'same-weekends-monthly' | 'custom'>, ParentId[]> = {
+  // 50/50 Schedules
+  'alt-weeks': ['A','A','A','A','A','A','A','B','B','B','B','B','B','B'],
+  '2-2-3': ['A','A','B','B','A','A','A','B','B','A','A','B','B','B'],
   '2-2-5-5': ['A','A','B','B','A','A','A','A','A','B','B','B','B','B'],
   '3-4-4-3': ['A','A','A','B','B','B','B','A','A','A','A','B','B','B'],
-  'alt-weeks': ['A','A','A','A','A','A','A','B','B','B','B','B','B','B'],
-  'every-other-weekend': ['A','A','A','A','A','B','B','A','A','A','A','A','B','B']
+  // 60/40 Schedule
+  'every-weekend': ['A','A','A','A','A','B','B'],
+  // 80/20 Schedule
+  'every-other-weekend': ['A','A','A','A','A','B','B','A','A','A','A','A','A','A'],
+  // 100/0 Schedule
+  'all-to-one': ['A'],
 };
+
+// Special case: same-weekends-monthly requires dynamic calculation
+function getSameWeekendsOwner(date: string): ParentId {
+  const d = new Date(date + 'T00:00:00');
+  const dayOfWeek = d.getDay();
+  if (dayOfWeek !== 0 && dayOfWeek !== 6) return 'parentA';
+  const weekendNumber = Math.ceil(d.getDate() / 7);
+  return (weekendNumber % 2 === 1) ? 'parentB' : 'parentA';
+}
 
 // Get owner for any date
 function getOwnerForDate(date: string, startDate: string, pattern: ParentId[]): ParentId {
@@ -105,11 +122,11 @@ function calculateDayOwner(date: string, config: AppConfig): ParentId {
 See `docs/PLAN.md` for detailed issue breakdown. Summary:
 
 1. **Cycle 1 (Issues #1-7):** Static UI with mock data
-2. **Cycle 2 (Issues #8-14):** Wizard UI (state only, no calculations)
-3. **Cycle 3 (Issues #15-19):** Stats dashboard with hardcoded data
-4. **Cycle 4 (Issues #20-23):** Core logic - **MOST CRITICAL**
-5. **Cycle 5 (Issues #24-26):** localStorage persistence
-6. **Cycle 6 (Issues #27-31):** Plan builder & export
+2. **Cycle 2 (Issues #8-13):** Wizard UI (3 steps: Pattern → Parents → Holidays)
+3. **Cycle 3 (Issues #14-18):** Stats dashboard with hardcoded data
+4. **Cycle 4 (Issues #19-22):** Core logic - **MOST CRITICAL**
+5. **Cycle 5 (Issues #23-25):** localStorage persistence
+6. **Cycle 6 (Issues #26-30):** Plan builder & export
 
 ## Testing Requirements
 
@@ -148,10 +165,20 @@ Template structure for court-ready prose:
 
 ```typescript
 const PATTERN_DESCRIPTIONS: Record<PatternType, string> = {
-  '2-2-5-5': `{{parentA}} shall have the children for two days, followed by {{parentB}} for two days. {{parentA}} shall then have the children for five days, followed by {{parentB}} for five days.`,
+  // 50/50 Schedules
   'alt-weeks': `{{parentA}} shall have the children for one week, followed by {{parentB}} for one week, in alternating succession.`,
+  '2-2-3': `{{parentA}} shall have the children every Monday and Tuesday. {{parentB}} shall have the children every Wednesday and Thursday. The parents shall alternate weekends (Friday through Sunday).`,
+  '2-2-5-5': `{{parentA}} shall have the children for two days, followed by {{parentB}} for two days. {{parentA}} shall then have the children for five days, followed by {{parentB}} for five days.`,
   '3-4-4-3': `{{parentA}} shall have the children for three days, followed by {{parentB}} for four days. {{parentA}} shall then have the children for four days, followed by {{parentB}} for three days.`,
-  'every-other-weekend': `{{parentA}} shall have primary physical custody. {{parentB}} shall have the children on alternating weekends.`
+  // 60/40 Schedule
+  'every-weekend': `{{parentA}} shall have primary physical custody during the week. {{parentB}} shall have the children every weekend from Friday evening through Sunday evening.`,
+  // 80/20 Schedules
+  'every-other-weekend': `{{parentA}} shall have primary physical custody. {{parentB}} shall have the children on alternating weekends.`,
+  'same-weekends-monthly': `{{parentA}} shall have primary physical custody. {{parentB}} shall have the children on the first, third, and fifth weekends of each month.`,
+  // 100/0 Schedule
+  'all-to-one': `{{parentA}} shall have sole physical custody of the children.`,
+  // Custom
+  'custom': `The parents shall share physical custody according to the custom schedule defined herein.`,
 };
 ```
 
@@ -172,7 +199,16 @@ const PATTERN_DESCRIPTIONS: Record<PatternType, string> = {
 
 ```typescript
 export type ParentId = 'parentA' | 'parentB';
-export type PatternType = '2-2-5-5' | '3-4-4-3' | 'alt-weeks' | 'every-other-weekend';
+export type PatternType = 
+  | 'alt-weeks'              // 50/50
+  | '2-2-3'                  // 50/50
+  | '2-2-5-5'                // 50/50
+  | '3-4-4-3'                // 50/50
+  | 'every-weekend'          // 60/40
+  | 'every-other-weekend'    // 80/20
+  | 'same-weekends-monthly'  // 80/20
+  | 'all-to-one'             // 100/0
+  | 'custom';                // User-defined
 
 export interface ParentConfig {
   name: string;
