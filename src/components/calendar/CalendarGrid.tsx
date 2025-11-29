@@ -84,28 +84,28 @@ export function CalendarGrid({
   const monthTitle = getMonthTitle(displayMonth);
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4">
+    <div className="rounded-xl bg-white p-6 shadow-lg">
       {/* Month Title - shown when hideTitle is false */}
       {!hideTitle && (
-        <h2 className="text-xl font-bold text-center text-gray-900 mb-4">
+        <h2 className="mb-6 text-center text-2xl font-bold text-gray-900">
           {monthTitle}
         </h2>
       )}
-      
+
       {/* Day-of-week headers */}
-      <div className="grid grid-cols-7 gap-1 mb-1">
+      <div className="mb-3 grid grid-cols-7 gap-2">
         {dayHeaders.map((day) => (
           <div
             key={day}
-            className="text-center text-sm font-semibold text-gray-600 py-2"
+            className="py-2 text-center text-sm font-bold uppercase tracking-wide text-gray-500"
           >
             {day}
           </div>
         ))}
       </div>
-      
+
       {/* Calendar grid - 6 weeks × 7 days = 42 cells */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-2">
         {mockDays.map((day) => (
           <DayCell
             key={day.date}
@@ -114,6 +114,18 @@ export function CalendarGrid({
             parentBColor={parentBColor}
           />
         ))}
+      </div>
+
+      {/* Legend */}
+      <div className="mt-6 flex items-center justify-center gap-6 border-t border-gray-100 pt-4">
+        <div className="flex items-center gap-2">
+          <div className={`h-4 w-4 rounded ${parentAColor}`} />
+          <span className="text-sm font-medium text-gray-600">Parent A</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className={`h-4 w-4 rounded ${parentBColor}`} />
+          <span className="text-sm font-medium text-gray-600">Parent B</span>
+        </div>
       </div>
     </div>
   );

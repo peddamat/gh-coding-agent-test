@@ -24,25 +24,27 @@ export function MonthNavigation({
   });
 
   return (
-    <div className="flex items-center justify-between px-4 py-2">
+    <div className="flex items-center justify-between px-6 py-4">
       <button
         onClick={onPreviousMonth}
-        className="rounded-md p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        className="rounded-full p-3 text-gray-500 transition-all duration-150 hover:bg-blue-50 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         aria-label="Previous month"
         type="button"
       >
-        <ChevronLeft className="h-5 w-5" />
+        <ChevronLeft className="h-6 w-6" />
       </button>
 
-      <h2 className="text-lg font-semibold text-gray-900">{monthTitle}</h2>
+      <h2 className="text-xl font-bold tracking-tight text-gray-900">
+        {monthTitle}
+      </h2>
 
       <button
         onClick={onNextMonth}
-        className="rounded-md p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        className="rounded-full p-3 text-gray-500 transition-all duration-150 hover:bg-blue-50 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         aria-label="Next month"
         type="button"
       >
-        <ChevronRight className="h-5 w-5" />
+        <ChevronRight className="h-6 w-6" />
       </button>
     </div>
   );

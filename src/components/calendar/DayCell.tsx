@@ -13,18 +13,23 @@ export function DayCell({ day, parentAColor, parentBColor }: DayCellProps) {
   return (
     <div
       className={clsx(
-        'relative flex h-12 w-12 items-start justify-end rounded-md p-1',
+        'relative aspect-square w-full rounded-lg p-2 transition-all duration-150',
+        'flex items-center justify-center',
+        'hover:scale-105 hover:shadow-md cursor-pointer',
         backgroundColor,
         {
-          'ring-2 ring-offset-1 ring-gray-900': day.isToday,
-          'opacity-50': !day.isCurrentMonth,
+          'ring-2 ring-offset-2 ring-gray-900 shadow-lg scale-105': day.isToday,
+          'opacity-40': !day.isCurrentMonth,
         }
       )}
     >
       <span
-        className={clsx('text-sm font-medium text-white', {
-          'font-bold': day.isToday,
-        })}
+        className={clsx(
+          'text-base font-semibold text-white drop-shadow-sm',
+          {
+            'text-lg font-bold': day.isToday,
+          }
+        )}
       >
         {day.dayOfMonth}
       </span>
