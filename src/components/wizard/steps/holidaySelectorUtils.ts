@@ -1,6 +1,9 @@
 import type { ParentId } from '../../../types';
 
-/** Type representing how custody is assigned for a holiday */
+/**
+ * Represents how custody is assigned for a holiday.
+ * Can be a specific parent or alternating between years.
+ */
 export type HolidayAssignment = ParentId | 'alternate';
 
 /** Holiday definition with metadata */
