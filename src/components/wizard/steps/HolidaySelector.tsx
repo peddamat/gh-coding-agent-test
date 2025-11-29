@@ -57,11 +57,6 @@ export function HolidaySelector({
         <p className="text-sm text-gray-700">
           <span className="font-semibold">{configuredCount}</span>{' '}
           {configuredCount === 1 ? 'holiday' : 'holidays'} configured
-          {configuredCount === 0 && (
-            {/* (holidays are optional) */}
-            
-            
-          )}
         </p>
       </div>
 
@@ -71,13 +66,11 @@ export function HolidaySelector({
           const currentAssignment = getSelection(holiday.id);
 
           return (
-            <div
+            <fieldset
               key={holiday.id}
               className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
             >
-              <div className="mb-3">
-                <h4 className="font-medium text-gray-900">{holiday.name}</h4>
-              </div>
+              <legend className="mb-3 font-medium text-gray-900">{holiday.name}</legend>
 
               {/* Radio options */}
               <div className="flex flex-wrap gap-2">
@@ -100,6 +93,7 @@ export function HolidaySelector({
                     checked={currentAssignment === 'parentA'}
                     onChange={() => handleAssignmentChange(holiday.id, 'parentA')}
                     className="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
+                    aria-label={`Assign ${holiday.name} to ${parentAName}`}
                   />
                   <span>{parentAName}</span>
                 </label>
@@ -123,6 +117,7 @@ export function HolidaySelector({
                     checked={currentAssignment === 'parentB'}
                     onChange={() => handleAssignmentChange(holiday.id, 'parentB')}
                     className="h-4 w-4 border-gray-300 text-pink-600 focus:ring-pink-500"
+                    aria-label={`Assign ${holiday.name} to ${parentBName}`}
                   />
                   <span>{parentBName}</span>
                 </label>
@@ -146,11 +141,12 @@ export function HolidaySelector({
                     checked={currentAssignment === 'alternate'}
                     onChange={() => handleAssignmentChange(holiday.id, 'alternate')}
                     className="h-4 w-4 border-gray-300 text-purple-600 focus:ring-purple-500"
+                    aria-label={`Alternate ${holiday.name} between parents each year`}
                   />
                   <span>Alternate Years</span>
                 </label>
               </div>
-            </div>
+            </fieldset>
           );
         })}
       </div>

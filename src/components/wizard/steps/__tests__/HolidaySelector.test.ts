@@ -3,6 +3,7 @@ import {
   HOLIDAYS, 
   getDefaultHolidaySelections, 
   getConfiguredHolidayCount,
+  isConfiguredAssignment,
   type HolidaySelection,
   type HolidayAssignment,
 } from '../holidaySelectorUtils';
@@ -122,6 +123,20 @@ describe('HolidaySelector', () => {
 
     test('returns 0 for empty array', () => {
       expect(getConfiguredHolidayCount([])).toBe(0);
+    });
+  });
+
+  describe('isConfiguredAssignment', () => {
+    test('returns true for parentA', () => {
+      expect(isConfiguredAssignment('parentA')).toBe(true);
+    });
+
+    test('returns true for parentB', () => {
+      expect(isConfiguredAssignment('parentB')).toBe(true);
+    });
+
+    test('returns false for alternate', () => {
+      expect(isConfiguredAssignment('alternate')).toBe(false);
     });
   });
 

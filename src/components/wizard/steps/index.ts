@@ -15,6 +15,7 @@ export {
   HOLIDAYS, 
   getDefaultHolidaySelections, 
   getConfiguredHolidayCount,
+  isConfiguredAssignment,
 } from './holidaySelectorUtils';
 export type { 
   HolidayAssignment, 
