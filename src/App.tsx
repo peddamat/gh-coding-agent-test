@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { X } from 'lucide-react';
 import { CalendarGrid, MonthNavigation } from './components/calendar';
 import { Header, Container } from './components/layout';
 import { WizardContainer, PatternPicker, ParentSetup, HolidaySelector } from './components/wizard';
@@ -15,17 +16,42 @@ const WIZARD_STEPS = [
 ];
 
 /**
- * Wizard content component that uses WizardContext.
- * Separated from AppContent to ensure context is available.
+ * Wizard modal overlay component.
+ * Shows the wizard as a modal dialog over the main content.
  */
-function WizardContent({
+function WizardModal({
+  isOpen,
+  onClose,
   onFinish,
-  onCancel,
 }: {
+  isOpen: boolean;
+  onClose: () => void;
   onFinish: () => void;
-  onCancel: () => void;
 }) {
   const { state, dispatch } = useWizard();
+
+  // Handle escape key to close modal
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
   const handlePatternSelect = (pattern: PatternType, split: SplitType) => {
     dispatch({ type: 'SET_PATTERN', payload: { pattern, split } });
@@ -39,39 +65,63 @@ function WizardContent({
     dispatch({ type: 'SET_HOLIDAYS', payload: holidaySelections });
   };
 
+  if (!isOpen) return null;
+
   return (
-    <WizardContainer
-      steps={WIZARD_STEPS}
-      onFinish={onFinish}
-      onCancel={onCancel}
-    >
-      {(currentStep) => {
-        if (currentStep === 0) {
-          return (
-            <PatternPicker
-              selectedPattern={state.pattern}
-              onPatternSelect={handlePatternSelect}
-            />
-          );
-        }
-        if (currentStep === 1) {
-          return (
-            <ParentSetup
-              data={state.parentSetup}
-              onChange={handleParentSetupChange}
-            />
-          );
-        }
-        return (
-          <HolidaySelector
-            selections={state.holidaySelections}
-            onSelectionsChange={handleHolidaySelectionsChange}
-            parentAName={state.parentSetup.parentAName || 'Parent A'}
-            parentBName={state.parentSetup.parentBName || 'Parent B'}
-          />
-        );
-      }}
-    </WizardContainer>
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Modal container */}
+      <div className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-auto mx-4">
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute -top-2 -right-2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          aria-label="Close wizard"
+        >
+          <X className="h-4 w-4 text-gray-600" />
+        </button>
+
+        {/* Wizard content */}
+        <WizardContainer
+          steps={WIZARD_STEPS}
+          onFinish={onFinish}
+          onCancel={onClose}
+        >
+          {(currentStep) => {
+            if (currentStep === 0) {
+              return (
+                <PatternPicker
+                  selectedPattern={state.pattern}
+                  onPatternSelect={handlePatternSelect}
+                />
+              );
+            }
+            if (currentStep === 1) {
+              return (
+                <ParentSetup
+                  data={state.parentSetup}
+                  onChange={handleParentSetupChange}
+                />
+              );
+            }
+            return (
+              <HolidaySelector
+                selections={state.holidaySelections}
+                onSelectionsChange={handleHolidaySelectionsChange}
+                parentAName={state.parentSetup.parentAName || 'Parent A'}
+                parentBName={state.parentSetup.parentBName || 'Parent B'}
+              />
+            );
+          }}
+        </WizardContainer>
+      </div>
+    </div>
   );
 }
 
@@ -82,12 +132,17 @@ function WizardContent({
 function AppContent() {
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [showWizard, setShowWizard] = useState(true);
-  const { state: wizardState, toAppState } = useWizard();
+  const { state: wizardState, toAppState, reset } = useWizard();
 
   const handleExportClick = () => {
     // Placeholder for future export functionality
     console.log('Export clicked');
   };
+
+  const handleNewScheduleClick = useCallback(() => {
+    reset();
+    setShowWizard(true);
+  }, [reset]);
 
   const handlePreviousMonth = () => {
     setCurrentMonth((prev) => {
@@ -111,45 +166,49 @@ function AppContent() {
     console.log('Wizard finished with AppState:', appState);
   };
 
-  const handleWizardCancel = () => {
+  const handleWizardClose = () => {
     setShowWizard(false);
   };
-
-  // Show wizard modal when active
-  if (showWizard) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <Header onExportClick={handleExportClick} />
-        <Container>
-          <div className="mx-auto max-w-4xl py-8">
-            <WizardContent onFinish={handleWizardFinish} onCancel={handleWizardCancel} />
-          </div>
-        </Container>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header at top */}
-      <Header onExportClick={handleExportClick} />
+      <Header
+        onExportClick={handleExportClick}
+        onNewScheduleClick={handleNewScheduleClick}
+      />
+
+      {/* Wizard modal overlay */}
+      <WizardModal
+        isOpen={showWizard}
+        onClose={handleWizardClose}
+        onFinish={handleWizardFinish}
+      />
 
       {/* Main content area */}
       <Container>
-        {/* Button to reopen wizard */}
-        <div className="mb-6">
-          <button
-            onClick={() => setShowWizard(true)}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-          >
-            Open Wizard
-          </button>
-          {wizardState.pattern && (
-            <span className="ml-4 text-gray-600">
-              Selected: {wizardState.pattern} ({wizardState.split})
-            </span>
-          )}
-        </div>
+        {/* Current schedule info */}
+        {wizardState.pattern && (
+          <div className="mb-6 rounded-xl bg-white p-4 shadow-md">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="rounded-lg bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700">
+                  {wizardState.split}
+                </span>
+                <span className="font-medium text-gray-700">
+                  {wizardState.pattern.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                </span>
+              </div>
+              {wizardState.parentSetup.parentAName && wizardState.parentSetup.parentBName && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <span>{wizardState.parentSetup.parentAName}</span>
+                  <span>•</span>
+                  <span>{wizardState.parentSetup.parentBName}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Responsive layout: stacks on mobile, side-by-side on desktop (prep for stats panel) */}
         <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-3">

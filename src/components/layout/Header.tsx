@@ -1,11 +1,13 @@
-import { Download, Calendar } from 'lucide-react';
+import { Download, Calendar, Plus } from 'lucide-react';
 
 export interface HeaderProps {
   /** Optional callback for when the export button is clicked */
   onExportClick?: () => void;
+  /** Optional callback for when the "Start New Schedule" button is clicked */
+  onNewScheduleClick?: () => void;
 }
 
-export function Header({ onExportClick }: HeaderProps) {
+export function Header({ onExportClick, onNewScheduleClick }: HeaderProps) {
   return (
     <header className="border-b border-gray-200 bg-white">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
@@ -20,13 +22,24 @@ export function Header({ onExportClick }: HeaderProps) {
             <p className="text-sm text-gray-500">Plan and visualize your parenting schedule</p>
           </div>
         </div>
-        <button
-          onClick={onExportClick}
-          className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-150 hover:from-blue-500 hover:to-blue-600 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-        >
-          <Download className="h-4 w-4" />
-          Export
-        </button>
+        <div className="flex items-center gap-3">
+          {onNewScheduleClick && (
+            <button
+              onClick={onNewScheduleClick}
+              className="inline-flex items-center gap-2 rounded-lg border border-blue-600 bg-white px-5 py-2.5 text-sm font-semibold text-blue-600 shadow-sm transition-all duration-150 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            >
+              <Plus className="h-4 w-4" />
+              Start New Schedule
+            </button>
+          )}
+          <button
+            onClick={onExportClick}
+            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-150 hover:from-blue-500 hover:to-blue-600 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          >
+            <Download className="h-4 w-4" />
+            Export
+          </button>
+        </div>
       </div>
     </header>
   );
