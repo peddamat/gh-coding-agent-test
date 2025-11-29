@@ -1,15 +1,25 @@
 import { useState } from 'react';
 import { CalendarGrid, MonthNavigation } from './components/calendar';
 import { Header, Container } from './components/layout';
-import { WizardContainer, PatternPicker } from './components/wizard';
+import { WizardContainer, PatternPicker, ParentSetup, getDefaultParentSetupData } from './components/wizard';
+import type { ParentSetupData } from './components/wizard';
 import type { PatternType } from './types';
 import type { SplitType } from './data/patterns';
+
+interface WizardData {
+  pattern: PatternType | null;
+  split: SplitType | null;
+  parentSetup: ParentSetupData;
+}
 
 function App() {
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [showWizard, setShowWizard] = useState(true);
-  const [selectedPattern, setSelectedPattern] = useState<PatternType | null>(null);
-  const [selectedSplit, setSelectedSplit] = useState<SplitType | null>(null);
+  const [wizardData, setWizardData] = useState<WizardData>(() => ({
+    pattern: null,
+    split: null,
+    parentSetup: getDefaultParentSetupData(),
+  }));
 
   const handleExportClick = () => {
     // Placeholder for future export functionality
@@ -33,13 +43,16 @@ function App() {
   };
 
   const handlePatternSelect = (pattern: PatternType, split: SplitType) => {
-    setSelectedPattern(pattern);
-    setSelectedSplit(split);
+    setWizardData((prev) => ({ ...prev, pattern, split }));
+  };
+
+  const handleParentSetupChange = (parentSetup: ParentSetupData) => {
+    setWizardData((prev) => ({ ...prev, parentSetup }));
   };
 
   const handleWizardFinish = () => {
     setShowWizard(false);
-    console.log('Wizard finished with pattern:', selectedPattern, 'split:', selectedSplit);
+    console.log('Wizard finished with:', wizardData);
   };
 
   const handleWizardCancel = () => {
@@ -68,16 +81,17 @@ function App() {
                 if (currentStep === 0) {
                   return (
                     <PatternPicker
-                      selectedPattern={selectedPattern}
+                      selectedPattern={wizardData.pattern}
                       onPatternSelect={handlePatternSelect}
                     />
                   );
                 }
                 if (currentStep === 1) {
                   return (
-                    <div className="text-center text-gray-500">
-                      <p>Parent Setup step coming soon...</p>
-                    </div>
+                    <ParentSetup
+                      data={wizardData.parentSetup}
+                      onChange={handleParentSetupChange}
+                    />
                   );
                 }
                 return (
@@ -108,9 +122,9 @@ function App() {
           >
             Open Wizard
           </button>
-          {selectedPattern && (
+          {wizardData.pattern && (
             <span className="ml-4 text-gray-600">
-              Selected: {selectedPattern} ({selectedSplit})
+              Selected: {wizardData.pattern} ({wizardData.split})
             </span>
           )}
         </div>
