@@ -1,64 +1,66 @@
-import { CalendarGrid } from './components/calendar';
-
+import { useState } from 'react';
+import { CalendarGrid, MonthNavigation } from './components/calendar';
 import { Header, Container } from './components/layout';
-import { DayCell } from './components/calendar/DayCell';
-import type { CalendarDay } from './types';
 
 function App() {
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+
   const handleExportClick = () => {
     // Placeholder for future export functionality
     console.log('Export clicked');
   };
 
-  // Sample days to showcase DayCell component
-  const sampleDays: CalendarDay[] = [
-    { date: '2025-01-15', dayOfMonth: 15, owner: 'parentA', isToday: false, isCurrentMonth: true },
-    { date: '2025-01-16', dayOfMonth: 16, owner: 'parentB', isToday: false, isCurrentMonth: true },
-    { date: '2025-01-17', dayOfMonth: 17, owner: 'parentA', isToday: true, isCurrentMonth: true },
-    { date: '2024-12-31', dayOfMonth: 31, owner: 'parentB', isToday: false, isCurrentMonth: false },
-  ];
+  const handlePreviousMonth = () => {
+    setCurrentMonth((prev) => {
+      const newDate = new Date(prev);
+      newDate.setMonth(newDate.getMonth() - 1);
+      return newDate;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth((prev) => {
+      const newDate = new Date(prev);
+      newDate.setMonth(newDate.getMonth() + 1);
+      return newDate;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* Header at top */}
       <Header onExportClick={handleExportClick} />
-      <header className="bg-white shadow">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-            Custody Calculator
-          </h1>
-        </div>
-      </header>
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <CalendarGrid />
-        <Container>
-          {/* Test Tailwind classes - bg-blue-500 */}
-          <div className="rounded-lg bg-blue-500 p-4 text-white shadow">
-            <p>Tailwind CSS is working! This box uses bg-blue-500.</p>
+
+      {/* Main content area */}
+      <Container>
+        {/* Responsive layout: stacks on mobile, side-by-side on desktop (prep for stats panel) */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Calendar section - takes 2/3 on desktop */}
+          <div className="lg:col-span-2">
+            {/* Month Navigation below header */}
+            <div className="mb-4 rounded-lg bg-white shadow">
+              <MonthNavigation
+                currentMonth={currentMonth}
+                onPreviousMonth={handlePreviousMonth}
+                onNextMonth={handleNextMonth}
+              />
+            </div>
+
+            {/* Calendar Grid fills main area */}
+            <CalendarGrid currentMonth={currentMonth} hideTitle />
           </div>
-        </Container>
-        <div className="mb-6 rounded-lg bg-white p-6 shadow">
-          <h2 className="mb-4 text-xl font-semibold text-gray-800">DayCell Component Demo</h2>
-          <div className="flex flex-wrap gap-4">
-            {sampleDays.map((day) => (
-              <div key={day.date} className="flex flex-col items-center gap-2">
-                <DayCell
-                  day={day}
-                  parentAColor="bg-blue-500"
-                  parentBColor="bg-pink-500"
-                />
-                <span className="text-xs text-gray-600">
-                  {day.isToday ? 'Today' : day.isCurrentMonth ? 'Current Month' : 'Previous Month'}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 text-sm text-gray-500">
-            <p>Blue = Parent A, Pink = Parent B</p>
-            <p>Bold border = Today indicator</p>
-            <p>Dimmed = Not current month</p>
+
+          {/* Stats panel placeholder - takes 1/3 on desktop */}
+          <div className="rounded-lg bg-white p-4 shadow lg:col-span-1">
+            <h3 className="mb-4 text-lg font-semibold text-gray-900">
+              Stats Panel
+            </h3>
+            <p className="text-sm text-gray-500">
+              Statistics and charts will appear here in a future update.
+            </p>
           </div>
         </div>
-      </main>
+      </Container>
     </div>
   );
 }
