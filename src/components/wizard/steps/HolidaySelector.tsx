@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import clsx from 'clsx';
 import { 
   HOLIDAYS, 
@@ -37,10 +38,10 @@ export function HolidaySelector({
     onSelectionsChange(newSelections);
   };
 
-  const getSelection = (holidayId: string): HolidayAssignment => {
+  const getSelection = useCallback((holidayId: string): HolidayAssignment => {
     const selection = selections.find((s) => s.holidayId === holidayId);
     return selection?.assignment ?? 'alternate';
-  };
+  }, [selections]);
 
   return (
     <div className="space-y-6">
