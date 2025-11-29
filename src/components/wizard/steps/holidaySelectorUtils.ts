@@ -39,10 +39,17 @@ export function getDefaultHolidaySelections(): HolidaySelection[] {
 }
 
 /**
+ * Returns true if the assignment is explicitly configured (not left on default 'alternate').
+ * Note: 'alternate' is treated as the default/unconfigured state.
+ */
+export function isConfiguredAssignment(assignment: HolidayAssignment): boolean {
+  return assignment === 'parentA' || assignment === 'parentB';
+}
+
+/**
  * Count how many holidays have been explicitly configured (not left on default 'alternate').
+ * Only holidays assigned to a specific parent are considered "configured".
  */
 export function getConfiguredHolidayCount(selections: HolidaySelection[]): number {
-  return selections.filter(
-    (s) => s.assignment === 'parentA' || s.assignment === 'parentB'
-  ).length;
+  return selections.filter((s) => isConfiguredAssignment(s.assignment)).length;
 }
