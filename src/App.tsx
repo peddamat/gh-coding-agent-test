@@ -1,9 +1,15 @@
 import { useState } from 'react';
 import { CalendarGrid, MonthNavigation } from './components/calendar';
 import { Header, Container } from './components/layout';
+import { WizardContainer, PatternPicker } from './components/wizard';
+import type { PatternType } from './types';
+import type { SplitType } from './data/patterns';
 
 function App() {
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const [showWizard, setShowWizard] = useState(true);
+  const [selectedPattern, setSelectedPattern] = useState<PatternType | null>(null);
+  const [selectedSplit, setSelectedSplit] = useState<SplitType | null>(null);
 
   const handleExportClick = () => {
     // Placeholder for future export functionality
@@ -26,6 +32,67 @@ function App() {
     });
   };
 
+  const handlePatternSelect = (pattern: PatternType, split: SplitType) => {
+    setSelectedPattern(pattern);
+    setSelectedSplit(split);
+  };
+
+  const handleWizardFinish = () => {
+    setShowWizard(false);
+    console.log('Wizard finished with pattern:', selectedPattern, 'split:', selectedSplit);
+  };
+
+  const handleWizardCancel = () => {
+    setShowWizard(false);
+  };
+
+  const wizardSteps = [
+    { title: 'Choose Schedule', description: 'Select a custody schedule pattern' },
+    { title: 'Parent Setup', description: 'Configure parent information' },
+    { title: 'Holiday Settings', description: 'Set holiday custody rules' },
+  ];
+
+  // Show wizard modal when active
+  if (showWizard) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <Header onExportClick={handleExportClick} />
+        <Container>
+          <div className="mx-auto max-w-4xl py-8">
+            <WizardContainer
+              steps={wizardSteps}
+              onFinish={handleWizardFinish}
+              onCancel={handleWizardCancel}
+            >
+              {(currentStep) => {
+                if (currentStep === 0) {
+                  return (
+                    <PatternPicker
+                      selectedPattern={selectedPattern}
+                      onPatternSelect={handlePatternSelect}
+                    />
+                  );
+                }
+                if (currentStep === 1) {
+                  return (
+                    <div className="text-center text-gray-500">
+                      <p>Parent Setup step coming soon...</p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="text-center text-gray-500">
+                    <p>Holiday Settings step coming soon...</p>
+                  </div>
+                );
+              }}
+            </WizardContainer>
+          </div>
+        </Container>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header at top */}
@@ -33,6 +100,21 @@ function App() {
 
       {/* Main content area */}
       <Container>
+        {/* Button to reopen wizard */}
+        <div className="mb-6">
+          <button
+            onClick={() => setShowWizard(true)}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+          >
+            Open Wizard
+          </button>
+          {selectedPattern && (
+            <span className="ml-4 text-gray-600">
+              Selected: {selectedPattern} ({selectedSplit})
+            </span>
+          )}
+        </div>
+
         {/* Responsive layout: stacks on mobile, side-by-side on desktop (prep for stats panel) */}
         <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-3">
           {/* Calendar section - takes 2/3 on desktop */}

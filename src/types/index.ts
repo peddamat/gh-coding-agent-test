@@ -1,5 +1,14 @@
 export type ParentId = 'parentA' | 'parentB';
-export type PatternType = '2-2-5-5' | '3-4-4-3' | 'alt-weeks' | 'every-other-weekend';
+export type PatternType =
+  | 'alt-weeks'              // 50/50 - Alternating weeks (7-7)
+  | '2-2-3'                  // 50/50 - 2-2-3 rotation
+  | '2-2-5-5'                // 50/50 - 2-2-5-5 rotation
+  | '3-4-4-3'                // 50/50 - 3-4-4-3 rotation
+  | 'every-weekend'          // 60/40 - Non-custodial parent gets every weekend
+  | 'every-other-weekend'    // 80/20 - Non-custodial parent gets alternating weekends
+  | 'same-weekends-monthly'  // 80/20 - Non-custodial parent gets 1st/3rd/5th weekends
+  | 'all-to-one'             // 100/0 - Full custody to one parent
+  | 'custom';                // Custom repeating rate
 
 export interface ParentConfig {
   name: string;
