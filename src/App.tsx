@@ -1,3 +1,5 @@
+import { CalendarGrid } from './components/calendar';
+
 import { Header, Container } from './components/layout';
 import { DayCell } from './components/calendar/DayCell';
 import type { CalendarDay } from './types';
@@ -27,6 +29,7 @@ function App() {
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <CalendarGrid />
         <Container>
           {/* Test Tailwind classes - bg-blue-500 */}
           <div className="rounded-lg bg-blue-500 p-4 text-white shadow">
