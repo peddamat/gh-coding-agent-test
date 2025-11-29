@@ -1,8 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import clsx from 'clsx';
 import { ColorPicker } from '../../shared/ColorPicker';
 import { DatePicker } from '../../shared/DatePicker';
-import { validateParentSetup, type ParentSetupData } from './parentSetupUtils';
+import { validateParentSetup, isParentSetupValid, type ParentSetupData } from './parentSetupUtils';
 
 export type { ParentSetupData };
 
@@ -11,6 +11,8 @@ export interface ParentSetupProps {
   data: ParentSetupData;
   /** Callback when form data changes */
   onChange: (data: ParentSetupData) => void;
+  /** Callback when validation state changes */
+  onValidationChange?: (isValid: boolean) => void;
   /** Whether to show validation errors */
   showErrors?: boolean;
 }
@@ -22,11 +24,18 @@ export interface ParentSetupProps {
 export function ParentSetup({
   data,
   onChange,
+  onValidationChange,
   showErrors = false,
 }: ParentSetupProps) {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const errors = validateParentSetup(data);
+  const isValid = isParentSetupValid(data);
+
+  // Notify parent component when validation state changes
+  useEffect(() => {
+    onValidationChange?.(isValid);
+  }, [isValid, onValidationChange]);
 
   const handleChange = useCallback(
     (field: keyof ParentSetupData, value: string) => {

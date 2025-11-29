@@ -21,6 +21,7 @@ export interface ValidationErrors {
 
 /**
  * Validates the parent setup form data.
+ * @param data - The parent setup data to validate
  * @returns Object with field-specific error messages
  */
 export function validateParentSetup(data: ParentSetupData): ValidationErrors {
