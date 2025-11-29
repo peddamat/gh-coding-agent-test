@@ -58,9 +58,9 @@ export function HolidaySelector({
           <span className="font-semibold">{configuredCount}</span>{' '}
           {configuredCount === 1 ? 'holiday' : 'holidays'} configured
           {configuredCount === 0 && (
-            <span className="ml-2 text-gray-500">
-              (holidays are optional for MVP)
-            </span>
+            {/* (holidays are optional) */}
+            
+            
           )}
         </p>
       </div>
