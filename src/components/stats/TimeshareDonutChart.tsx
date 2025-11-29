@@ -1,5 +1,7 @@
+import { useMemo } from 'react';
 import { Doughnut } from 'react-chartjs-2';
 import type { ChartData, ChartOptions, Plugin } from 'chart.js';
+import { determinePrimaryParent } from './utils';
 
 export interface TimeshareDonutChartProps {
   /** Parent A display name */
@@ -29,11 +31,23 @@ export function TimeshareDonutChart({
   parentBPercent,
   parentBColor,
 }: TimeshareDonutChartProps) {
-  // Determine primary parent (the one with higher or equal percentage)
-  const primaryPercent = parentAPercent >= parentBPercent ? parentAPercent : parentBPercent;
-  const primaryName = parentAPercent >= parentBPercent ? parentAName : parentBName;
+  // Runtime validation: warn if percentages do not sum to 100
+  const sum = parentAPercent + parentBPercent;
+  if (Math.abs(sum - 100) > 0.01) {
+    console.warn(
+      `TimeshareDonutChart: parentAPercent (${parentAPercent}) + parentBPercent (${parentBPercent}) = ${sum}, expected 100.`
+    );
+  }
 
-  const data: ChartData<'doughnut'> = {
+  // Determine primary parent (the one with higher or equal percentage)
+  const { primaryName, primaryPercent } = determinePrimaryParent(
+    parentAName,
+    parentAPercent,
+    parentBName,
+    parentBPercent
+  );
+
+  const data: ChartData<'doughnut'> = useMemo(() => ({
     labels: [parentAName, parentBName],
     datasets: [
       {
@@ -44,10 +58,10 @@ export function TimeshareDonutChart({
         hoverOffset: 4,
       },
     ],
-  };
+  }), [parentAName, parentBName, parentAPercent, parentBPercent, parentAColor, parentBColor]);
 
   // Custom plugin to render center text
-  const centerTextPlugin: Plugin<'doughnut'> = {
+  const centerTextPlugin: Plugin<'doughnut'> = useMemo(() => ({
     id: 'centerText',
     afterDraw: (chart) => {
       const { ctx, width, height } = chart;
@@ -71,9 +85,9 @@ export function TimeshareDonutChart({
 
       ctx.restore();
     },
-  };
+  }), [primaryPercent, primaryName]);
 
-  const options: ChartOptions<'doughnut'> = {
+  const options: ChartOptions<'doughnut'> = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: true,
     cutout: '65%', // Control donut hole size (60-70% as recommended)
@@ -95,11 +109,11 @@ export function TimeshareDonutChart({
             if (!datasets.length || !labels) return [];
             
             const dataset = datasets[0];
-            const data = dataset.data as number[];
+            const chartData = dataset.data as number[];
             const backgroundColor = dataset.backgroundColor as string[];
             
             return labels.map((label, index) => ({
-              text: `${label}: ${Math.round(data[index])}%`,
+              text: `${label}: ${Math.round(chartData[index])}%`,
               fillStyle: backgroundColor[index],
               strokeStyle: backgroundColor[index],
               hidden: false,
@@ -119,10 +133,14 @@ export function TimeshareDonutChart({
         },
       },
     },
-  };
+  }), []);
 
   return (
     <div className="flex flex-col items-center" aria-label="Custody time split chart">
+      {/* Screen reader accessible content */}
+      <div className="sr-only">
+        Custody time split: {parentAName} has {Math.round(parentAPercent)}% and {parentBName} has {Math.round(parentBPercent)}%
+      </div>
       <div className="w-full max-w-xs">
         <Doughnut data={data} options={options} plugins={[centerTextPlugin]} />
       </div>

@@ -4,6 +4,7 @@ import FocusTrap from 'focus-trap-react';
 import { CalendarGrid, MonthNavigation } from './components/calendar';
 import { Header, Container } from './components/layout';
 import { TimeshareDonutChart } from './components/stats';
+import { COLOR_OPTIONS } from './components/shared/colorOptions';
 import { WizardContainer, PatternPicker, ParentSetup, HolidaySelector } from './components/wizard';
 import { WizardProvider, useWizard } from './context';
 import { getPatternByType } from './data/patterns';
@@ -257,10 +258,10 @@ function AppContent() {
               <TimeshareDonutChart
                 parentAName={wizardState.parentSetup.parentAName || 'Parent A'}
                 parentAPercent={50}
-                parentAColor="#3b82f6"
+                parentAColor={COLOR_OPTIONS.find(opt => opt.value === wizardState.parentSetup.parentAColor)?.preview || '#3b82f6'}
                 parentBName={wizardState.parentSetup.parentBName || 'Parent B'}
                 parentBPercent={50}
-                parentBColor="#ec4899"
+                parentBColor={COLOR_OPTIONS.find(opt => opt.value === wizardState.parentSetup.parentBColor)?.preview || '#ec4899'}
               />
 
               {/* Placeholder stats */}

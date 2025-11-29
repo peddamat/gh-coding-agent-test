@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import type { TimeshareDonutChartProps } from '../TimeshareDonutChart';
+import { determinePrimaryParent } from '../utils';
 
 // We test the component's props interface
 // Since this is a presentational component using Chart.js, we verify the props are correctly typed
@@ -87,5 +88,37 @@ describe('TimeshareDonutChart', () => {
       expect(mock.parentBPercent).toBeDefined();
       expect(mock.parentBColor).toBeDefined();
     });
+  });
+});
+
+describe('determinePrimaryParent', () => {
+  test('determines Parent A as primary when percentages are equal', () => {
+    const result = determinePrimaryParent('Mom', 50, 'Dad', 50);
+    expect(result.primaryName).toBe('Mom');
+    expect(result.primaryPercent).toBe(50);
+  });
+
+  test('determines Parent A as primary when they have higher percentage', () => {
+    const result = determinePrimaryParent('Mother', 60, 'Father', 40);
+    expect(result.primaryName).toBe('Mother');
+    expect(result.primaryPercent).toBe(60);
+  });
+
+  test('determines Parent B as primary when they have higher percentage', () => {
+    const result = determinePrimaryParent('Parent A', 20, 'Parent B', 80);
+    expect(result.primaryName).toBe('Parent B');
+    expect(result.primaryPercent).toBe(80);
+  });
+
+  test('handles close percentages correctly', () => {
+    const result = determinePrimaryParent('Guardian 1', 49, 'Guardian 2', 51);
+    expect(result.primaryName).toBe('Guardian 2');
+    expect(result.primaryPercent).toBe(51);
+  });
+
+  test('handles extreme split 100/0', () => {
+    const result = determinePrimaryParent('Custodial', 100, 'Non-custodial', 0);
+    expect(result.primaryName).toBe('Custodial');
+    expect(result.primaryPercent).toBe(100);
   });
 });
