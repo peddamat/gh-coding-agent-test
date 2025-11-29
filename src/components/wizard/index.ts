@@ -11,5 +11,16 @@ export {
   getDefaultParentSetupData,
   toAppStateFormat,
   fromAppStateFormat,
+  HolidaySelector,
+  HOLIDAYS,
+  getDefaultHolidaySelections,
+  getConfiguredHolidayCount,
 } from './steps';
-export type { ParentSetupProps, ParentSetupData } from './steps';
+export type { 
+  ParentSetupProps, 
+  ParentSetupData,
+  HolidaySelectorProps,
+  HolidayAssignment,
+  HolidayDefinition,
+  HolidaySelection,
+} from './steps';

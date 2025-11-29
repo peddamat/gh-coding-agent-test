@@ -9,3 +9,16 @@ export {
   toAppStateFormat,
   fromAppStateFormat,
 } from './parentSetupUtils';
+export { HolidaySelector } from './HolidaySelector';
+export type { HolidaySelectorProps } from './HolidaySelector';
+export { 
+  HOLIDAYS, 
+  getDefaultHolidaySelections, 
+  getConfiguredHolidayCount,
+  isConfiguredAssignment,
+} from './holidaySelectorUtils';
+export type { 
+  HolidayAssignment, 
+  HolidayDefinition, 
+  HolidaySelection,
+} from './holidaySelectorUtils';

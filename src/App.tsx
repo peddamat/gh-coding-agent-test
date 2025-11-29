@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { CalendarGrid, MonthNavigation } from './components/calendar';
 import { Header, Container } from './components/layout';
-import { WizardContainer, PatternPicker, ParentSetup, getDefaultParentSetupData } from './components/wizard';
-import type { ParentSetupData } from './components/wizard';
+import { WizardContainer, PatternPicker, ParentSetup, HolidaySelector, getDefaultParentSetupData, getDefaultHolidaySelections } from './components/wizard';
+import type { ParentSetupData, HolidaySelection } from './components/wizard';
 import type { PatternType } from './types';
 import type { SplitType } from './data/patterns';
 
@@ -10,6 +10,7 @@ interface WizardData {
   pattern: PatternType | null;
   split: SplitType | null;
   parentSetup: ParentSetupData;
+  holidaySelections: HolidaySelection[];
 }
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
     pattern: null,
     split: null,
     parentSetup: getDefaultParentSetupData(),
+    holidaySelections: getDefaultHolidaySelections(),
   }));
 
   const handleExportClick = () => {
@@ -48,6 +50,10 @@ function App() {
 
   const handleParentSetupChange = (parentSetup: ParentSetupData) => {
     setWizardData((prev) => ({ ...prev, parentSetup }));
+  };
+
+  const handleHolidaySelectionsChange = (holidaySelections: HolidaySelection[]) => {
+    setWizardData((prev) => ({ ...prev, holidaySelections }));
   };
 
   const handleWizardFinish = () => {
@@ -95,9 +101,12 @@ function App() {
                   );
                 }
                 return (
-                  <div className="text-center text-gray-500">
-                    <p>Holiday Settings step coming soon...</p>
-                  </div>
+                  <HolidaySelector
+                    selections={wizardData.holidaySelections}
+                    onSelectionsChange={handleHolidaySelectionsChange}
+                    parentAName={wizardData.parentSetup.parentAName || 'Parent A'}
+                    parentBName={wizardData.parentSetup.parentBName || 'Parent B'}
+                  />
                 );
               }}
             </WizardContainer>
