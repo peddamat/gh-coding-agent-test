@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { CalendarGrid, MonthNavigation } from './components/calendar';
 import { Header, Container } from './components/layout';
-import { WizardContainer, PatternPicker } from './components/wizard';
+import { WizardContainer, PatternPicker, ParentSetup, getDefaultParentSetupData } from './components/wizard';
+import type { ParentSetupData } from './components/wizard';
 import type { PatternType } from './types';
 import type { SplitType } from './data/patterns';
 
@@ -10,6 +11,9 @@ function App() {
   const [showWizard, setShowWizard] = useState(true);
   const [selectedPattern, setSelectedPattern] = useState<PatternType | null>(null);
   const [selectedSplit, setSelectedSplit] = useState<SplitType | null>(null);
+  const [parentSetupData, setParentSetupData] = useState<ParentSetupData>(() =>
+    getDefaultParentSetupData()
+  );
 
   const handleExportClick = () => {
     // Placeholder for future export functionality
@@ -39,7 +43,7 @@ function App() {
 
   const handleWizardFinish = () => {
     setShowWizard(false);
-    console.log('Wizard finished with pattern:', selectedPattern, 'split:', selectedSplit);
+    console.log('Wizard finished with pattern:', selectedPattern, 'split:', selectedSplit, 'parentSetup:', parentSetupData);
   };
 
   const handleWizardCancel = () => {
@@ -75,9 +79,10 @@ function App() {
                 }
                 if (currentStep === 1) {
                   return (
-                    <div className="text-center text-gray-500">
-                      <p>Parent Setup step coming soon...</p>
-                    </div>
+                    <ParentSetup
+                      data={parentSetupData}
+                      onChange={setParentSetupData}
+                    />
                   );
                 }
                 return (
