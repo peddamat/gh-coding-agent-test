@@ -188,7 +188,7 @@ function AppContent() {
       {/* Main content area */}
       <Container>
         {/* Current schedule info */}
-        {wizardState.pattern && (
+        {wizardState.pattern && wizardState.split && (
           <div className="mb-6 rounded-xl bg-white p-4 shadow-md">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
