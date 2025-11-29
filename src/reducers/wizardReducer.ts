@@ -67,8 +67,10 @@ export function convertWizardToAppState(wizardState: WizardState): AppState {
 
   // Default values for required fields
   const selectedPattern: PatternType = pattern || 'alt-weeks';
-  const startingParent: ParentId = parentSetup.startingParent;
-  const startDate = parentSetup.startDate;
+  const startingParent: ParentId = parentSetup.startingParent || 'parentA';
+  
+  // Default to today's date if not provided
+  const startDate = parentSetup.startDate || new Date().toISOString().split('T')[0];
   const exchangeTime = '15:00'; // Default exchange time
 
   return {
@@ -81,11 +83,11 @@ export function convertWizardToAppState(wizardState: WizardState): AppState {
     parents: {
       parentA: {
         name: parentSetup.parentAName || 'Parent A',
-        colorClass: parentSetup.parentAColor,
+        colorClass: parentSetup.parentAColor || 'bg-blue-500',
       },
       parentB: {
         name: parentSetup.parentBName || 'Parent B',
-        colorClass: parentSetup.parentBColor,
+        colorClass: parentSetup.parentBColor || 'bg-pink-500',
       },
     },
   };
