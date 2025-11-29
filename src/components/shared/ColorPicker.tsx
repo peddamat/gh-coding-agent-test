@@ -64,7 +64,7 @@ export function ColorPicker({
               }
             )}
           >
-            <option value="">Select a color</option>
+            <option value="" disabled>Select a color</option>
             {COLOR_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
