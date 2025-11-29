@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useId } from 'react';
 import { X } from 'lucide-react';
+import FocusTrap from 'focus-trap-react';
 import { CalendarGrid, MonthNavigation } from './components/calendar';
 import { Header, Container } from './components/layout';
 import { WizardContainer, PatternPicker, ParentSetup, HolidaySelector } from './components/wizard';
 import { WizardProvider, useWizard } from './context';
+import { getPatternByType } from './data/patterns';
 import type { PatternType } from './types';
 import type { SplitType } from './data/patterns';
 import type { ParentSetupData, HolidaySelection } from './components/wizard';
@@ -29,6 +31,7 @@ function WizardModal({
   onFinish: () => void;
 }) {
   const { state, dispatch } = useWizard();
+  const titleId = useId();
 
   // Handle escape key to close modal
   useEffect(() => {
@@ -68,60 +71,69 @@ function WizardModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
+    <FocusTrap>
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+        className="fixed inset-0 z-50 flex items-center justify-center"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+          aria-hidden="true"
+        />
 
-      {/* Modal container */}
-      <div className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-auto mx-4">
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute -top-2 -right-2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          aria-label="Close wizard"
-        >
-          <X className="h-4 w-4 text-gray-600" />
-        </button>
+        {/* Modal container */}
+        <div className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-auto mx-4">
+          {/* Hidden title for accessibility */}
+          <h2 id={titleId} className="sr-only">Schedule Setup Wizard</h2>
+          
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute -top-2 -right-2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="Close wizard"
+          >
+            <X className="h-4 w-4 text-gray-600" />
+          </button>
 
-        {/* Wizard content */}
-        <WizardContainer
-          steps={WIZARD_STEPS}
-          onFinish={onFinish}
-          onCancel={onClose}
-        >
-          {(currentStep) => {
-            if (currentStep === 0) {
+          {/* Wizard content */}
+          <WizardContainer
+            steps={WIZARD_STEPS}
+            onFinish={onFinish}
+            onCancel={onClose}
+          >
+            {(currentStep) => {
+              if (currentStep === 0) {
+                return (
+                  <PatternPicker
+                    selectedPattern={state.pattern}
+                    onPatternSelect={handlePatternSelect}
+                  />
+                );
+              }
+              if (currentStep === 1) {
+                return (
+                  <ParentSetup
+                    data={state.parentSetup}
+                    onChange={handleParentSetupChange}
+                  />
+                );
+              }
               return (
-                <PatternPicker
-                  selectedPattern={state.pattern}
-                  onPatternSelect={handlePatternSelect}
+                <HolidaySelector
+                  selections={state.holidaySelections}
+                  onSelectionsChange={handleHolidaySelectionsChange}
+                  parentAName={state.parentSetup.parentAName || 'Parent A'}
+                  parentBName={state.parentSetup.parentBName || 'Parent B'}
                 />
               );
-            }
-            if (currentStep === 1) {
-              return (
-                <ParentSetup
-                  data={state.parentSetup}
-                  onChange={handleParentSetupChange}
-                />
-              );
-            }
-            return (
-              <HolidaySelector
-                selections={state.holidaySelections}
-                onSelectionsChange={handleHolidaySelectionsChange}
-                parentAName={state.parentSetup.parentAName || 'Parent A'}
-                parentBName={state.parentSetup.parentBName || 'Parent B'}
-              />
-            );
-          }}
-        </WizardContainer>
+            }}
+          </WizardContainer>
+        </div>
       </div>
-    </div>
+    </FocusTrap>
   );
 }
 
@@ -167,6 +179,7 @@ function AppContent() {
   };
 
   const handleWizardClose = () => {
+    reset();
     setShowWizard(false);
   };
 
@@ -189,25 +202,26 @@ function AppContent() {
       <Container>
         {/* Current schedule info */}
         {wizardState.pattern && wizardState.split && (
-          <div className="mb-6 rounded-xl bg-white p-4 shadow-md">
+          <section aria-labelledby="schedule-info-heading" className="mb-6 rounded-xl bg-white p-4 shadow-md">
+            <h2 id="schedule-info-heading" className="sr-only">Current Schedule Information</h2>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <span className="rounded-lg bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700">
                   {wizardState.split}
                 </span>
                 <span className="font-medium text-gray-700">
-                  {wizardState.pattern.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                  {getPatternByType(wizardState.pattern)?.label || ''}
                 </span>
               </div>
               {wizardState.parentSetup.parentAName && wizardState.parentSetup.parentBName && (
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <span>{wizardState.parentSetup.parentAName}</span>
-                  <span>•</span>
+                  <span aria-hidden="true">•</span>
                   <span>{wizardState.parentSetup.parentBName}</span>
                 </div>
               )}
             </div>
-          </div>
+          </section>
         )}
 
         {/* Responsive layout: stacks on mobile, side-by-side on desktop (prep for stats panel) */}
