@@ -2,6 +2,10 @@ import { CalendarDay, ParentId } from '../../types';
 import { DayCell } from './DayCell';
 
 interface CalendarGridProps {
+  /** The month to display. If not provided, uses the current month. */
+  currentMonth?: Date;
+  /** Whether to hide the internal month title. Set to true when using MonthNavigation externally. */
+  hideTitle?: boolean;
   weekStartsOnMonday?: boolean;
   parentAColor?: string;
   parentBColor?: string;
@@ -12,13 +16,14 @@ const DAY_HEADERS_MONDAY_START = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun
 
 /**
  * Generate mock calendar data for display.
- * Produces 42 days (6 weeks) centered around the current month.
+ * Produces 42 days (6 weeks) centered around the specified month.
+ * @param displayMonth - The month to display
  * @param weekStartsOnMonday - If true, week starts on Monday; otherwise Sunday
  */
-function generateMockDays(weekStartsOnMonday: boolean): CalendarDay[] {
+function generateMockDays(displayMonth: Date, weekStartsOnMonday: boolean): CalendarDay[] {
   const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
+  const year = displayMonth.getFullYear();
+  const month = displayMonth.getMonth();
   
   // Get the first day of the current month
   const firstDayOfMonth = new Date(year, month, 1);
@@ -60,28 +65,32 @@ function generateMockDays(weekStartsOnMonday: boolean): CalendarDay[] {
 }
 
 /**
- * Get the current month title (e.g., "November 2025")
+ * Get the month title for the given date (e.g., "November 2025")
  */
-function getCurrentMonthTitle(): string {
-  const today = new Date();
-  return today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+function getMonthTitle(date: Date): string {
+  return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 }
 
 export function CalendarGrid({
+  currentMonth,
+  hideTitle = false,
   weekStartsOnMonday = false,
   parentAColor = 'bg-blue-500',
   parentBColor = 'bg-pink-500',
 }: CalendarGridProps) {
+  const displayMonth = currentMonth ?? new Date();
   const dayHeaders = weekStartsOnMonday ? DAY_HEADERS_MONDAY_START : DAY_HEADERS_SUNDAY_START;
-  const mockDays = generateMockDays(weekStartsOnMonday);
-  const monthTitle = getCurrentMonthTitle();
+  const mockDays = generateMockDays(displayMonth, weekStartsOnMonday);
+  const monthTitle = getMonthTitle(displayMonth);
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4">
-      {/* Month Title */}
-      <h2 className="text-xl font-bold text-center text-gray-900 mb-4">
-        {monthTitle}
-      </h2>
+      {/* Month Title - shown when hideTitle is false */}
+      {!hideTitle && (
+        <h2 className="text-xl font-bold text-center text-gray-900 mb-4">
+          {monthTitle}
+        </h2>
+      )}
       
       {/* Day-of-week headers */}
       <div className="grid grid-cols-7 gap-1 mb-1">
