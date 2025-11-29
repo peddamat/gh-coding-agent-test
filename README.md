@@ -13,8 +13,8 @@ A precision legal tool that helps divorced or separated parents design, visualiz
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
-   cd custody-calculator
+   git clone https://github.com/peddamat/gh-coding-agent-test.git
+   cd gh-coding-agent-test
    ```
 
 2. Install dependencies:
