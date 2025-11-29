@@ -1,0 +1,48 @@
+import type { ParentId } from '../../../types';
+
+/** Type representing how custody is assigned for a holiday */
+export type HolidayAssignment = ParentId | 'alternate';
+
+/** Holiday definition with metadata */
+export interface HolidayDefinition {
+  id: string;
+  name: string;
+  /** Date description - fixed format like '12-25' or dynamic like 'fourth-thursday-november' */
+  date: string;
+}
+
+/** State of a single holiday selection */
+export interface HolidaySelection {
+  holidayId: string;
+  assignment: HolidayAssignment;
+}
+
+/** Major US holidays for custody scheduling */
+export const HOLIDAYS: HolidayDefinition[] = [
+  { id: 'thanksgiving', name: 'Thanksgiving', date: 'fourth-thursday-november' },
+  { id: 'christmas', name: 'Christmas Day', date: '12-25' },
+  { id: 'newyear', name: "New Year's Day", date: '01-01' },
+  { id: 'july4', name: 'Independence Day', date: '07-04' },
+  { id: 'memorial', name: 'Memorial Day', date: 'last-monday-may' },
+  { id: 'labor', name: 'Labor Day', date: 'first-monday-september' },
+];
+
+/**
+ * Get the default holiday selections (all unassigned initially).
+ * Returns selections with 'alternate' as the default assignment.
+ */
+export function getDefaultHolidaySelections(): HolidaySelection[] {
+  return HOLIDAYS.map((holiday) => ({
+    holidayId: holiday.id,
+    assignment: 'alternate',
+  }));
+}
+
+/**
+ * Count how many holidays have been explicitly configured (not left on default 'alternate').
+ */
+export function getConfiguredHolidayCount(selections: HolidaySelection[]): number {
+  return selections.filter(
+    (s) => s.assignment === 'parentA' || s.assignment === 'parentB'
+  ).length;
+}
