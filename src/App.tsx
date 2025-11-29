@@ -1,7 +1,13 @@
+import { Header, Container } from './components/layout';
 import { DayCell } from './components/calendar/DayCell';
 import type { CalendarDay } from './types';
 
 function App() {
+  const handleExportClick = () => {
+    // Placeholder for future export functionality
+    console.log('Export clicked');
+  };
+
   // Sample days to showcase DayCell component
   const sampleDays: CalendarDay[] = [
     { date: '2025-01-15', dayOfMonth: 15, owner: 'parentA', isToday: false, isCurrentMonth: true },
@@ -12,6 +18,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      <Header onExportClick={handleExportClick} />
       <header className="bg-white shadow">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">
@@ -20,6 +27,12 @@ function App() {
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <Container>
+          {/* Test Tailwind classes - bg-blue-500 */}
+          <div className="rounded-lg bg-blue-500 p-4 text-white shadow">
+            <p>Tailwind CSS is working! This box uses bg-blue-500.</p>
+          </div>
+        </Container>
         <div className="mb-6 rounded-lg bg-white p-6 shadow">
           <h2 className="mb-4 text-xl font-semibold text-gray-800">DayCell Component Demo</h2>
           <div className="flex flex-wrap gap-4">
