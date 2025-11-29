@@ -60,6 +60,8 @@ export function validateParentSetup(data: ParentSetupData): ValidationErrors {
 
 /**
  * Check if the form data is valid.
+ * @param data - The parent setup data to validate
+ * @returns True if the data is valid, false otherwise
  */
 export function isParentSetupValid(data: ParentSetupData): boolean {
   const errors = validateParentSetup(data);
