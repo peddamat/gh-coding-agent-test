@@ -70,6 +70,7 @@ export function isParentSetupValid(data: ParentSetupData): boolean {
 
 /**
  * Get default parent setup data.
+ * @returns {ParentSetupData} Default parent setup data with today's date and default colors
  */
 export function getDefaultParentSetupData(): ParentSetupData {
   const today = new Date();
