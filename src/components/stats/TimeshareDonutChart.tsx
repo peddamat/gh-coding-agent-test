@@ -4,13 +4,13 @@ import type { ChartData, ChartOptions, Plugin } from 'chart.js';
 export interface TimeshareDonutChartProps {
   /** Parent A display name */
   parentAName: string;
-  /** Parent A custody percentage */
+  /** Parent A custody percentage (0-100, should sum to 100 with parentBPercent) */
   parentAPercent: number;
   /** Parent A color (hex value, e.g., '#3b82f6') */
   parentAColor: string;
   /** Parent B display name */
   parentBName: string;
-  /** Parent B custody percentage */
+  /** Parent B custody percentage (0-100, should sum to 100 with parentAPercent) */
   parentBPercent: number;
   /** Parent B color (hex value, e.g., '#ec4899') */
   parentBColor: string;
