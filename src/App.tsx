@@ -1,27 +1,88 @@
 import { useState } from 'react';
 import { CalendarGrid, MonthNavigation } from './components/calendar';
 import { Header, Container } from './components/layout';
-import { WizardContainer, PatternPicker, ParentSetup, HolidaySelector, getDefaultParentSetupData, getDefaultHolidaySelections } from './components/wizard';
-import type { ParentSetupData, HolidaySelection } from './components/wizard';
+import { WizardContainer, PatternPicker, ParentSetup, HolidaySelector } from './components/wizard';
+import { WizardProvider, useWizard } from './context';
 import type { PatternType } from './types';
 import type { SplitType } from './data/patterns';
+import type { ParentSetupData, HolidaySelection } from './components/wizard';
 
-interface WizardData {
-  pattern: PatternType | null;
-  split: SplitType | null;
-  parentSetup: ParentSetupData;
-  holidaySelections: HolidaySelection[];
+/** Static wizard steps configuration - defined outside component to avoid recreation on each render */
+const WIZARD_STEPS = [
+  { title: 'Choose Schedule', description: 'Select a custody schedule pattern' },
+  { title: 'Parent Setup', description: 'Configure parent information' },
+  { title: 'Holiday Settings', description: 'Set holiday custody rules' },
+];
+
+/**
+ * Wizard content component that uses WizardContext.
+ * Separated from AppContent to ensure context is available.
+ */
+function WizardContent({
+  onFinish,
+  onCancel,
+}: {
+  onFinish: () => void;
+  onCancel: () => void;
+}) {
+  const { state, dispatch } = useWizard();
+
+  const handlePatternSelect = (pattern: PatternType, split: SplitType) => {
+    dispatch({ type: 'SET_PATTERN', payload: { pattern, split } });
+  };
+
+  const handleParentSetupChange = (parentSetup: ParentSetupData) => {
+    dispatch({ type: 'SET_PARENTS', payload: parentSetup });
+  };
+
+  const handleHolidaySelectionsChange = (holidaySelections: HolidaySelection[]) => {
+    dispatch({ type: 'SET_HOLIDAYS', payload: holidaySelections });
+  };
+
+  return (
+    <WizardContainer
+      steps={WIZARD_STEPS}
+      onFinish={onFinish}
+      onCancel={onCancel}
+    >
+      {(currentStep) => {
+        if (currentStep === 0) {
+          return (
+            <PatternPicker
+              selectedPattern={state.pattern}
+              onPatternSelect={handlePatternSelect}
+            />
+          );
+        }
+        if (currentStep === 1) {
+          return (
+            <ParentSetup
+              data={state.parentSetup}
+              onChange={handleParentSetupChange}
+            />
+          );
+        }
+        return (
+          <HolidaySelector
+            selections={state.holidaySelections}
+            onSelectionsChange={handleHolidaySelectionsChange}
+            parentAName={state.parentSetup.parentAName || 'Parent A'}
+            parentBName={state.parentSetup.parentBName || 'Parent B'}
+          />
+        );
+      }}
+    </WizardContainer>
+  );
 }
 
-function App() {
+/**
+ * Main application content component.
+ * Uses WizardContext for wizard state management.
+ */
+function AppContent() {
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [showWizard, setShowWizard] = useState(true);
-  const [wizardData, setWizardData] = useState<WizardData>(() => ({
-    pattern: null,
-    split: null,
-    parentSetup: getDefaultParentSetupData(),
-    holidaySelections: getDefaultHolidaySelections(),
-  }));
+  const { state: wizardState, toAppState } = useWizard();
 
   const handleExportClick = () => {
     // Placeholder for future export functionality
@@ -44,32 +105,15 @@ function App() {
     });
   };
 
-  const handlePatternSelect = (pattern: PatternType, split: SplitType) => {
-    setWizardData((prev) => ({ ...prev, pattern, split }));
-  };
-
-  const handleParentSetupChange = (parentSetup: ParentSetupData) => {
-    setWizardData((prev) => ({ ...prev, parentSetup }));
-  };
-
-  const handleHolidaySelectionsChange = (holidaySelections: HolidaySelection[]) => {
-    setWizardData((prev) => ({ ...prev, holidaySelections }));
-  };
-
   const handleWizardFinish = () => {
     setShowWizard(false);
-    console.log('Wizard finished with:', wizardData);
+    const appState = toAppState();
+    console.log('Wizard finished with AppState:', appState);
   };
 
   const handleWizardCancel = () => {
     setShowWizard(false);
   };
-
-  const wizardSteps = [
-    { title: 'Choose Schedule', description: 'Select a custody schedule pattern' },
-    { title: 'Parent Setup', description: 'Configure parent information' },
-    { title: 'Holiday Settings', description: 'Set holiday custody rules' },
-  ];
 
   // Show wizard modal when active
   if (showWizard) {
@@ -78,38 +122,7 @@ function App() {
         <Header onExportClick={handleExportClick} />
         <Container>
           <div className="mx-auto max-w-4xl py-8">
-            <WizardContainer
-              steps={wizardSteps}
-              onFinish={handleWizardFinish}
-              onCancel={handleWizardCancel}
-            >
-              {(currentStep) => {
-                if (currentStep === 0) {
-                  return (
-                    <PatternPicker
-                      selectedPattern={wizardData.pattern}
-                      onPatternSelect={handlePatternSelect}
-                    />
-                  );
-                }
-                if (currentStep === 1) {
-                  return (
-                    <ParentSetup
-                      data={wizardData.parentSetup}
-                      onChange={handleParentSetupChange}
-                    />
-                  );
-                }
-                return (
-                  <HolidaySelector
-                    selections={wizardData.holidaySelections}
-                    onSelectionsChange={handleHolidaySelectionsChange}
-                    parentAName={wizardData.parentSetup.parentAName || 'Parent A'}
-                    parentBName={wizardData.parentSetup.parentBName || 'Parent B'}
-                  />
-                );
-              }}
-            </WizardContainer>
+            <WizardContent onFinish={handleWizardFinish} onCancel={handleWizardCancel} />
           </div>
         </Container>
       </div>
@@ -131,9 +144,9 @@ function App() {
           >
             Open Wizard
           </button>
-          {wizardData.pattern && (
+          {wizardState.pattern && (
             <span className="ml-4 text-gray-600">
-              Selected: {wizardData.pattern} ({wizardData.split})
+              Selected: {wizardState.pattern} ({wizardState.split})
             </span>
           )}
         </div>
@@ -204,6 +217,14 @@ function App() {
         </div>
       </Container>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <WizardProvider>
+      <AppContent />
+    </WizardProvider>
   );
 }
 
