@@ -85,7 +85,7 @@ function WizardModal({
         />
 
         {/* Modal container */}
-        <div className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-auto mx-4">
+        <div className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-auto mx-4" tabIndex={-1}>
           {/* Hidden title for accessibility */}
           <h2 id={titleId} className="sr-only">Schedule Setup Wizard</h2>
           
@@ -152,8 +152,8 @@ function AppContent() {
   };
 
   const handleNewScheduleClick = useCallback(() => {
-    reset();
     setShowWizard(true);
+    reset();
   }, [reset]);
 
   const handlePreviousMonth = () => {
@@ -201,7 +201,7 @@ function AppContent() {
       {/* Main content area */}
       <Container>
         {/* Current schedule info */}
-        {wizardState.pattern && wizardState.split && (
+        {wizardState.pattern && wizardState.split && !showWizard && (
           <section aria-labelledby="schedule-info-heading" className="mb-6 rounded-xl bg-white p-4 shadow-md">
             <h2 id="schedule-info-heading" className="sr-only">Current Schedule Information</h2>
             <div className="flex items-center justify-between">
@@ -210,7 +210,7 @@ function AppContent() {
                   {wizardState.split}
                 </span>
                 <span className="font-medium text-gray-700">
-                  {getPatternByType(wizardState.pattern)?.label || ''}
+                  {getPatternByType(wizardState.pattern)?.label || 'Unknown Pattern'}
                 </span>
               </div>
               {wizardState.parentSetup.parentAName && wizardState.parentSetup.parentBName && (
