@@ -3,6 +3,8 @@ import { X } from 'lucide-react';
 import FocusTrap from 'focus-trap-react';
 import { CalendarGrid, MonthNavigation } from './components/calendar';
 import { Header, Container } from './components/layout';
+import { TimeshareDonutChart } from './components/stats';
+import { COLOR_OPTIONS } from './components/shared/colorOptions';
 import { WizardContainer, PatternPicker, ParentSetup, HolidaySelector } from './components/wizard';
 import { WizardProvider, useWizard } from './context';
 import { getPatternByType } from './data/patterns';
@@ -252,13 +254,23 @@ function AppContent() {
               <p className="text-sm text-gray-500">Custody time breakdown</p>
             </div>
             <div className="p-6">
+              {/* Timeshare Donut Chart */}
+              <TimeshareDonutChart
+                parentAName={wizardState.parentSetup.parentAName || 'Parent A'}
+                parentAPercent={50}
+                parentAColor={COLOR_OPTIONS.find(opt => opt.value === wizardState.parentSetup.parentAColor)?.preview || '#3b82f6'}
+                parentBName={wizardState.parentSetup.parentBName || 'Parent B'}
+                parentBPercent={50}
+                parentBColor={COLOR_OPTIONS.find(opt => opt.value === wizardState.parentSetup.parentBColor)?.preview || '#ec4899'}
+              />
+
               {/* Placeholder stats */}
-              <div className="space-y-4">
+              <div className="mt-6 space-y-4">
                 <div className="rounded-xl bg-blue-50 p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="h-3 w-3 rounded-full bg-blue-500" />
-                      <span className="font-medium text-gray-700">Parent A</span>
+                      <span className="font-medium text-gray-700">{wizardState.parentSetup.parentAName || 'Parent A'}</span>
                     </div>
                     <span className="text-2xl font-bold text-blue-600">50%</span>
                   </div>
@@ -270,7 +282,7 @@ function AppContent() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="h-3 w-3 rounded-full bg-pink-500" />
-                      <span className="font-medium text-gray-700">Parent B</span>
+                      <span className="font-medium text-gray-700">{wizardState.parentSetup.parentBName || 'Parent B'}</span>
                     </div>
                     <span className="text-2xl font-bold text-pink-600">50%</span>
                   </div>
@@ -278,12 +290,6 @@ function AppContent() {
                     <div className="h-full w-1/2 rounded-full bg-pink-500" />
                   </div>
                 </div>
-              </div>
-
-              <div className="mt-6 border-t border-gray-100 pt-4">
-                <p className="text-center text-sm text-gray-400">
-                  Charts and detailed statistics coming soon
-                </p>
               </div>
             </div>
           </div>
