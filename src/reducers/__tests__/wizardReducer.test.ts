@@ -1,9 +1,12 @@
 import { describe, test, expect } from 'vitest';
 import { wizardReducer, convertWizardToAppState, createDefaultEnhancedHolidayState, type WizardState, type WizardAction } from '../wizardReducer';
 import { getDefaultParentSetupData, getDefaultHolidaySelections } from '../../components/wizard';
+import { NEVADA_8TH_DISTRICT_TEMPLATE } from '../../data/templates/nevada-8th-district';
 
 describe('wizardReducer', () => {
   const initialState: WizardState = {
+    selectedTemplate: null,
+    isBuildYourOwn: false,
     pattern: null,
     split: null,
     parentSetup: getDefaultParentSetupData(),
@@ -139,6 +142,8 @@ describe('wizardReducer', () => {
   describe('RESET action', () => {
     test('resets state to provided initial state', () => {
       const modifiedState: WizardState = {
+        selectedTemplate: null,
+        isBuildYourOwn: true,
         pattern: '2-2-5-5',
         split: '50/50',
         parentSetup: {
@@ -157,6 +162,43 @@ describe('wizardReducer', () => {
     });
   });
 
+  describe('SET_TEMPLATE action', () => {
+    test('applies template and sets pattern', () => {
+      const action: WizardAction = { type: 'SET_TEMPLATE', payload: NEVADA_8TH_DISTRICT_TEMPLATE };
+      const newState = wizardReducer(initialState, action);
+
+      expect(newState.selectedTemplate).toBe(NEVADA_8TH_DISTRICT_TEMPLATE);
+      expect(newState.isBuildYourOwn).toBe(false);
+      expect(newState.pattern).toBe('every-other-weekend');
+      expect(newState.split).toBe('80/20');
+    });
+
+    test('applies template holiday configurations', () => {
+      const action: WizardAction = { type: 'SET_TEMPLATE', payload: NEVADA_8TH_DISTRICT_TEMPLATE };
+      const newState = wizardReducer(initialState, action);
+
+      // Check that holiday configs were updated
+      expect(newState.enhancedHolidays.holidayConfigs.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('SET_BUILD_YOUR_OWN action', () => {
+    test('clears template and sets build your own flag', () => {
+      // First apply a template
+      const stateWithTemplate: WizardState = {
+        ...initialState,
+        selectedTemplate: NEVADA_8TH_DISTRICT_TEMPLATE,
+        isBuildYourOwn: false,
+      };
+      
+      const action: WizardAction = { type: 'SET_BUILD_YOUR_OWN' };
+      const newState = wizardReducer(stateWithTemplate, action);
+
+      expect(newState.selectedTemplate).toBeNull();
+      expect(newState.isBuildYourOwn).toBe(true);
+    });
+  });
+
   describe('unknown action', () => {
     test('returns current state for unknown action', () => {
       const unknownAction = { type: 'UNKNOWN_ACTION' } as unknown as WizardAction;
@@ -169,6 +211,8 @@ describe('wizardReducer', () => {
 describe('convertWizardToAppState', () => {
   test('converts wizard state to AppState format', () => {
     const wizardState: WizardState = {
+      selectedTemplate: null,
+      isBuildYourOwn: true,
       pattern: '2-2-5-5',
       split: '50/50',
       parentSetup: {
@@ -197,6 +241,8 @@ describe('convertWizardToAppState', () => {
 
   test('uses default pattern when pattern is null', () => {
     const wizardState: WizardState = {
+      selectedTemplate: null,
+      isBuildYourOwn: false,
       pattern: null,
       split: null,
       parentSetup: getDefaultParentSetupData(),
@@ -211,6 +257,8 @@ describe('convertWizardToAppState', () => {
 
   test('uses default parent names when names are empty', () => {
     const wizardState: WizardState = {
+      selectedTemplate: null,
+      isBuildYourOwn: true,
       pattern: 'alt-weeks',
       split: '50/50',
       parentSetup: {
@@ -233,6 +281,8 @@ describe('convertWizardToAppState', () => {
 
   test('preserves startingParent correctly', () => {
     const wizardState: WizardState = {
+      selectedTemplate: null,
+      isBuildYourOwn: true,
       pattern: '2-2-3',
       split: '50/50',
       parentSetup: {

@@ -5,7 +5,8 @@ import { CalendarGrid, MonthNavigation } from './components/calendar';
 import { Header, Container } from './components/layout';
 import { StatsPanel } from './components/stats';
 import { COLOR_OPTIONS, DEFAULT_PARENT_A_COLOR, DEFAULT_PARENT_B_COLOR } from './components/shared/colorOptions';
-import { WizardContainer, PatternPicker, HolidaySelector } from './components/wizard';
+import { WizardContainer, PatternPicker, HolidaySelector, TemplateSelector } from './components/wizard';
+import type { TemplateOption } from './components/wizard/steps/TemplateSelector';
 import { WizardProvider, useWizard, AppStateProvider, useAppState } from './context';
 import { getPatternByType, getSplitPercentages } from './data/patterns';
 import { useCustodyEngine } from './hooks';
@@ -16,6 +17,7 @@ import type { ParentSetupData } from './components/wizard';
 
 /** Static wizard steps configuration - defined outside component to avoid recreation on each render */
 const WIZARD_STEPS = [
+  { title: 'Quick Start', description: 'Choose a template or build your own' },
   { title: 'Schedule Setup', description: 'Configure parents and schedule pattern' },
   { title: 'Holiday Settings', description: 'Set holiday custody rules' },
 ];
@@ -66,6 +68,26 @@ function WizardModal({
   const handleParentSetupChange = (parentSetup: ParentSetupData) => {
     dispatch({ type: 'SET_PARENTS', payload: parentSetup });
   };
+
+  // Template selection handler
+  const handleTemplateOptionSelect = (option: TemplateOption) => {
+    if (option.type === 'template') {
+      dispatch({ type: 'SET_TEMPLATE', payload: option.template });
+    } else {
+      dispatch({ type: 'SET_BUILD_YOUR_OWN' });
+    }
+  };
+
+  // Get currently selected template option for the selector
+  const selectedTemplateOption: TemplateOption | null = useMemo(() => {
+    if (state.selectedTemplate) {
+      return { type: 'template', template: state.selectedTemplate };
+    }
+    if (state.isBuildYourOwn) {
+      return { type: 'build-your-own' };
+    }
+    return null;
+  }, [state.selectedTemplate, state.isBuildYourOwn]);
 
   // Enhanced holiday handlers
   const handleHolidayConfigsChange = (configs: HolidayUserConfig[]) => {
@@ -129,6 +151,14 @@ function WizardModal({
           >
             {(currentStep) => {
               if (currentStep === 0) {
+                return (
+                  <TemplateSelector
+                    selectedOption={selectedTemplateOption}
+                    onOptionSelect={handleTemplateOptionSelect}
+                  />
+                );
+              }
+              if (currentStep === 1) {
                 return (
                   <PatternPicker
                     selectedPattern={state.pattern}

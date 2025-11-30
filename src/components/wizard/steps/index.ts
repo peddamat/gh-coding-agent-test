@@ -22,3 +22,5 @@ export type {
   HolidayDefinition, 
   HolidaySelection,
 } from './holidaySelectorUtils';
+export { TemplateSelector } from './TemplateSelector';
+export type { TemplateSelectorProps, TemplateOption } from './TemplateSelector';

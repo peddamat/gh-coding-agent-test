@@ -6,6 +6,8 @@ import { getDefaultParentSetupData, getDefaultHolidaySelections, type HolidaySel
 describe('WizardContext', () => {
   describe('initial state structure', () => {
     const defaultState: WizardState = {
+      selectedTemplate: null,
+      isBuildYourOwn: false,
       pattern: null,
       split: null,
       parentSetup: getDefaultParentSetupData(),
@@ -19,6 +21,14 @@ describe('WizardContext', () => {
 
     test('initial state has null split', () => {
       expect(defaultState.split).toBeNull();
+    });
+
+    test('initial state has null template', () => {
+      expect(defaultState.selectedTemplate).toBeNull();
+    });
+
+    test('initial state has isBuildYourOwn as false', () => {
+      expect(defaultState.isBuildYourOwn).toBe(false);
     });
 
     test('initial state has default parent setup', () => {
@@ -58,6 +68,8 @@ describe('WizardContext', () => {
   describe('state persistence across steps', () => {
     test('pattern selection persists when moving to next step', () => {
       let state: WizardState = {
+        selectedTemplate: null,
+        isBuildYourOwn: false,
         pattern: null,
         split: null,
         parentSetup: getDefaultParentSetupData(),
@@ -89,6 +101,8 @@ describe('WizardContext', () => {
 
     test('all state persists when navigating back and forth', () => {
       const state: WizardState = {
+        selectedTemplate: null,
+        isBuildYourOwn: true,
         pattern: '3-4-4-3',
         split: '50/50',
         parentSetup: {
