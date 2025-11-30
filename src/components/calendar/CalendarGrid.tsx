@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { CalendarDay, ParentId, AppConfig } from '../../types';
+import { CalendarDay, ParentId, AppConfig, HolidayState } from '../../types';
 import { DayCell } from './DayCell';
 import { useCustodyEngine } from '../../hooks';
 
@@ -17,6 +17,8 @@ interface CalendarGridProps {
   parentBName?: string;
   /** App configuration for real custody calculations. If not provided, uses mock data. */
   appConfig?: AppConfig;
+  /** Holiday configuration for holiday override display */
+  holidays?: HolidayState;
 }
 
 const DAY_HEADERS_SUNDAY_START = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -88,6 +90,7 @@ export function CalendarGrid({
   parentAName = 'Parent A',
   parentBName = 'Parent B',
   appConfig,
+  holidays,
 }: CalendarGridProps) {
   // Memoize displayMonth to avoid recreating on every render
   const displayMonth = useMemo(() => currentMonth ?? new Date(), [currentMonth]);
@@ -101,7 +104,8 @@ export function CalendarGrid({
       selectedPattern: 'alt-weeks',
       startingParent: 'parentA',
       exchangeTime: '18:00',
-    }
+    },
+    holidays
   );
 
   // Calculate days using useMemo for performance
