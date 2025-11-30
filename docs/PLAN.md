@@ -940,13 +940,283 @@ Wire all components to use centralized AppState.
 
 ---
 
-### Cycle 6: Plan Builder UI & Export (Days 15-17)
+### Cycle 6: Holiday Configuration (Days 15-18)
+
+**Goal:** Comprehensive holiday entry UI with tiered approach, quick setup presets, and live impact preview.
+
+---
+
+#### Issue #26: Holiday Data Model Enhancement
+
+**Labels:** `logic`, `priority:high`
+
+**Description:**
+Extend holiday data model to support all assignment types and categories from the Nevada court holiday document.
+
+**Acceptance Criteria:**
+
+- [ ] `HolidayCategory` type: `'major-break' | 'weekend' | 'birthday' | 'religious'`
+- [ ] `AssignmentType` enum: `'alternate-odd-even' | 'always-parent-a' | 'always-parent-b' | 'split-period' | 'selection-priority'`
+- [ ] `HolidayConfig` interface with date calculation logic (fixed date, nth weekday, relative)
+- [ ] `SplitPeriodConfig` for Winter Break (Christmas segment + New Year segment)
+- [ ] `SelectionPriorityConfig` for Summer Vacation (weeks, selection deadline, alternating first pick)
+- [ ] All 11 Weekend Holidays defined with correct dates
+- [ ] All 3 Birthday types supported (Children, Mom, Dad)
+- [ ] Spring Break, Thanksgiving, Winter Break, Summer Vacation defined
+
+**Files to Create:**
+
+- `src/types/holidays.ts`
+- `src/data/holidays.ts`
+
+**Type Definitions:**
+
+```typescript
+export type HolidayCategory = 'major-break' | 'weekend' | 'birthday' | 'religious';
+export type AssignmentType = 
+  | 'alternate-odd-even'
+  | 'always-parent-a' 
+  | 'always-parent-b'
+  | 'split-period'
+  | 'selection-priority';
+
+export interface HolidayDefinition {
+  id: string;
+  name: string;
+  category: HolidayCategory;
+  defaultAssignment: AssignmentType;
+  dateCalculation: DateCalculation;
+  durationDays: number;
+  priority: number; // Higher = overrides lower
+}
+
+export interface SplitPeriodConfig {
+  splitPoint: string; // e.g., "Dec 26 12:00 PM"
+  segment1Name: string; // "Christmas"
+  segment2Name: string; // "New Year's"
+  segment1Assignment: AssignmentType;
+  segment2Assignment: AssignmentType;
+}
+```
+
+**Blocked By:** Issue #2
+
+---
+
+#### Issue #27: Major Breaks Component
+
+**Labels:** `ui`, `priority:high`
+
+**Description:**
+UI component for configuring the "Big 4" major breaks: Spring Break, Thanksgiving, Winter Break, Summer Vacation. These account for 50+ days combined.
+
+**Acceptance Criteria:**
+
+- [ ] Collapsible section for each major break
+- [ ] Spring Break: date range picker + assignment dropdown
+- [ ] Thanksgiving: preset "Wed 6pm - Sun 6pm" with assignment dropdown
+- [ ] Winter Break: split configuration UI (Christmas segment + New Year segment)
+- [ ] Summer Vacation: week count, selection deadline, alternating first pick toggle
+- [ ] Shows day count for each break
+- [ ] Total days counter at top of section
+
+**Files to Create:**
+
+- `src/components/wizard/holidays/MajorBreaksConfig.tsx`
+
+**UI Structure:**
+
+```text
+┌─ Major Breaks (52 days total) ─────────────────┐
+│ ▼ Spring Break (7 days)                        │
+│   Dates: [Mar 17] to [Mar 23]                  │
+│   Assignment: [Alternate Odd/Even ▼]           │
+│                                                │
+│ ▼ Thanksgiving (5 days)                        │
+│   Wed 6pm - Sun 6pm                            │
+│   Assignment: [Alternate Odd/Even ▼]           │
+│                                                │
+│ ▼ Winter Break - Split (14 days)               │
+│   Christmas (Dec 23 - Dec 26 noon): [Even ▼]   │
+│   New Year's (Dec 26 noon - Jan 2): [Odd ▼]    │
+│                                                │
+│ ▼ Summer Vacation (26 days)                    │
+│   Each parent: [2] weeks × 2 blocks            │
+│   Selection deadline: [April 1]                │
+│   First pick in 2025: [Parent A ▼]             │
+└────────────────────────────────────────────────┘
+```
+
+**Blocked By:** Issue #26
+
+---
+
+#### Issue #28: Weekend Holidays Component
+
+**Labels:** `ui`, `priority:medium`
+
+**Description:**
+UI component for configuring the 11 weekend holidays. Show as compact list with batch controls.
+
+**Acceptance Criteria:**
+
+- [ ] Grouped list of all 11 weekend holidays
+- [ ] Each shows: name, date (calculated for current year), assignment dropdown
+- [ ] "Apply to All" batch control (Alternate, Always A, Always B)
+- [ ] Special handling: Mother's Day always shows "Always Parent B" default
+- [ ] Special handling: Father's Day always shows "Always Parent A" default
+- [ ] Total days counter (3 days × 11 = 33 days potential)
+- [ ] Enable/disable toggle per holiday
+
+**Files to Create:**
+
+- `src/components/wizard/holidays/WeekendHolidaysConfig.tsx`
+
+**Weekend Holidays List:**
+
+1. Martin Luther King Jr. Day (3rd Monday January)
+2. Presidents' Day (3rd Monday February)
+3. Mother's Day (2nd Sunday May) - Default: Always Parent B
+4. Memorial Day (Last Monday May)
+5. Father's Day (3rd Sunday June) - Default: Always Parent A
+6. Independence Day (July 4 weekend)
+7. Labor Day (1st Monday September)
+8. Nevada Day (Last Friday October)
+9. Halloween (October 31 weekend)
+10. Veterans Day (November 11 weekend)
+
+**Blocked By:** Issue #26
+
+---
+
+#### Issue #29: Birthdays & Quick Setup Component
+
+**Labels:** `ui`, `priority:medium`
+
+**Description:**
+Birthday configuration and quick setup presets for rapid holiday configuration.
+
+**Acceptance Criteria:**
+
+- [ ] Birthday section with 3 entries:
+  - Children's birthdays (date picker for each child)
+  - Mother's birthday (date picker, default: Always Parent B)
+  - Father's birthday (date picker, default: Always Parent A)
+- [ ] Quick Setup presets panel with 3 options:
+  - "Traditional" (alternating major holidays, fixed parent days)
+  - "50/50 Split" (alternate everything odd/even)
+  - "One Parent All" (all holidays to selected parent)
+- [ ] Preset selection populates all holiday assignments
+- [ ] User can customize after selecting preset
+- [ ] "Reset to Preset" button to undo customizations
+
+**Files to Create:**
+
+- `src/components/wizard/holidays/BirthdaysConfig.tsx`
+- `src/components/wizard/holidays/QuickSetupPresets.tsx`
+
+**Blocked By:** Issue #26
+
+---
+
+#### Issue #30: Holiday Impact Preview Panel
+
+**Labels:** `ui`, `priority:high`
+
+**Description:**
+Live preview panel showing quantitative impact of holiday configuration on timeshare percentage.
+
+**Acceptance Criteria:**
+
+- [ ] Shows base schedule percentage (from Cycle 4 calculation)
+- [ ] Shows adjusted percentage after holiday overrides
+- [ ] Delta indicator (e.g., "+12 days to Parent B")
+- [ ] Breakdown by category:
+  - Major Breaks: +X days Parent A, +Y days Parent B
+  - Weekend Holidays: +X days Parent A, +Y days Parent B
+  - Birthdays: +X days Parent A, +Y days Parent B
+- [ ] Updates live as user changes assignments
+- [ ] Warning if result deviates significantly from base (>10%)
+
+**Files to Create:**
+
+- `src/components/wizard/holidays/HolidayImpactPreview.tsx`
+
+**UI Structure:**
+
+```text
+┌─ Holiday Impact Preview ───────────────────────┐
+│ Base Schedule: 50.0% / 50.0%                   │
+│                                                │
+│ With Holidays: 47.3% / 52.7%                   │
+│                ▲ Parent B gains 12 days        │
+│                                                │
+│ Breakdown:                                     │
+│   Major Breaks    +18 days B                   │
+│   Weekend Holidays +6 days A, +8 days B        │
+│   Birthdays       +2 days A, +2 days B         │
+│                                                │
+│ ⚠️ Result differs from base by 5.4%            │
+└────────────────────────────────────────────────┘
+```
+
+**Blocked By:** Issues #27, #28, #29, Issue #22 (real stats calculation)
+
+---
+
+#### Issue #31: Integrate Holiday Config into Wizard & Engine
+
+**Labels:** `integration`, `priority:critical`
+
+**Description:**
+Wire holiday configuration into the wizard flow and custody engine hierarchy.
+
+**Acceptance Criteria:**
+
+- [ ] HolidaySelector step shows tabbed interface:
+  - Tab 1: Quick Setup (presets)
+  - Tab 2: Major Breaks
+  - Tab 3: Weekend Holidays
+  - Tab 4: Birthdays
+- [ ] Holiday config saved to AppState
+- [ ] `useCustodyEngine` respects holiday overrides (Layer 2 in hierarchy)
+- [ ] Calendar shows holiday indicators on affected dates
+- [ ] Holiday tooltip shows which holiday overrides that day
+- [ ] "Recalculate" button forces stats refresh
+
+**Files to Modify:**
+
+- `src/components/wizard/steps/HolidaySelector.tsx`
+- `src/hooks/useCustodyEngine.ts`
+- `src/components/calendar/DayCell.tsx`
+- `src/context/AppStateContext.tsx`
+
+**Integration Logic:**
+
+```typescript
+// In useCustodyEngine - Layer 2 check
+function calculateDayOwner(date: string, config: AppConfig): ParentId {
+  const baseOwner = getPatternOwner(date, config.selectedPattern);
+  
+  // Layer 2: Holiday override
+  const holidayOverride = getHolidayOwner(date, config.holidays);
+  if (holidayOverride) return holidayOverride.owner;
+  
+  return baseOwner;
+}
+```
+
+**Blocked By:** Issues #27, #28, #29, #30, Issue #24 (AppState)
+
+---
+
+### Cycle 7: Plan Builder UI & Export (Days 19-21)
 
 **Goal:** Basic parenting plan text generation and export.
 
 ---
 
-#### Issue #26: Create PlanBuilder Shell Component
+#### Issue #32: Create PlanBuilder Shell Component
 
 **Labels:** `ui`, `priority:medium`
 
@@ -969,7 +1239,7 @@ Container for the parenting plan builder interface.
 
 ---
 
-#### Issue #27: Create Provision Category Components
+#### Issue #33: Create Provision Category Components
 
 **Labels:** `ui`, `priority:medium`
 
@@ -990,11 +1260,11 @@ UI for selecting and configuring provisions by category.
 - `src/components/plan/ProvisionToggle.tsx`
 - `src/data/provisions.ts` (static provision library)
 
-**Blocked By:** Issue #26
+**Blocked By:** Issue #32
 
 ---
 
-#### Issue #28: Implement Schedule-to-Text Generator
+#### Issue #34: Implement Schedule-to-Text Generator
 
 **Labels:** `logic`, `priority:medium`
 
@@ -1027,7 +1297,7 @@ five days. All exchanges shall occur at 3:00 PM."
 
 ---
 
-#### Issue #29: Implement Copy & Download Export
+#### Issue #35: Implement Copy & Download Export
 
 **Labels:** `feature`, `priority:medium`
 
@@ -1049,11 +1319,11 @@ Export functionality for the generated plan text.
 
 - `src/components/plan/PlanBuilder.tsx`
 
-**Blocked By:** Issue #28
+**Blocked By:** Issue #34
 
 ---
 
-#### Issue #30: Add Plan Builder to App Navigation
+#### Issue #36: Add Plan Builder to App Navigation
 
 **Labels:** `ui`, `priority:medium`
 
@@ -1071,7 +1341,7 @@ Integrate Plan Builder as tab or route in main app.
 - `src/App.tsx`
 - `src/components/layout/Header.tsx`
 
-**Blocked By:** Issue #26
+**Blocked By:** Issue #32
 
 ---
 
