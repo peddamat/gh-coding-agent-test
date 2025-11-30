@@ -13,3 +13,6 @@ export {
   calculateYearlyStats,
 } from './useCustodyEngine';
 export type { UseCustodyEngineReturn, YearlyStats } from './useCustodyEngine';
+
+export { useLocalStorage } from './useLocalStorage';
+export type { UseLocalStorageReturn } from './useLocalStorage';
