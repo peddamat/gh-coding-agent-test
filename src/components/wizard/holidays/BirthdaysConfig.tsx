@@ -1,0 +1,341 @@
+import { useCallback } from 'react';
+import clsx from 'clsx';
+import { Plus, X, Cake } from 'lucide-react';
+import type { BirthdayConfig, AssignmentType } from '../../../types/holidays';
+
+/** Props for BirthdaysConfig */
+export interface BirthdaysConfigProps {
+  /** Current birthday configurations */
+  birthdays: BirthdayConfig[];
+  /** Callback when birthdays change */
+  onBirthdaysChange: (birthdays: BirthdayConfig[]) => void;
+  /** Display name for Parent A */
+  parentAName?: string;
+  /** Display name for Parent B */
+  parentBName?: string;
+}
+
+/** Month options for dropdown */
+const MONTHS = [
+  { value: 1, label: 'January' },
+  { value: 2, label: 'February' },
+  { value: 3, label: 'March' },
+  { value: 4, label: 'April' },
+  { value: 5, label: 'May' },
+  { value: 6, label: 'June' },
+  { value: 7, label: 'July' },
+  { value: 8, label: 'August' },
+  { value: 9, label: 'September' },
+  { value: 10, label: 'October' },
+  { value: 11, label: 'November' },
+  { value: 12, label: 'December' },
+];
+
+/** Get days in month */
+function getDaysInMonth(month: number): number {
+  // Use a non-leap year for simplicity (Feb = 28 days)
+  const daysPerMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  return daysPerMonth[month - 1] || 31;
+}
+
+/** Assignment options for dropdowns */
+const ASSIGNMENT_OPTIONS: { value: AssignmentType; label: string }[] = [
+  { value: 'alternate-odd-even', label: 'Alternate Years' },
+  { value: 'always-parent-a', label: 'Always Parent A' },
+  { value: 'always-parent-b', label: 'Always Parent B' },
+];
+
+/**
+ * Individual birthday entry component.
+ */
+function BirthdayEntry({
+  birthday,
+  onChange,
+  onRemove,
+  parentAName,
+  parentBName,
+  canRemove,
+}: {
+  birthday: BirthdayConfig;
+  onChange: (updates: Partial<BirthdayConfig>) => void;
+  onRemove?: () => void;
+  parentAName: string;
+  parentBName: string;
+  canRemove: boolean;
+}) {
+  const daysInMonth = getDaysInMonth(birthday.month);
+  const isParentBirthday = birthday.type === 'parent-a' || birthday.type === 'parent-b';
+
+  // Get label with parent name substitution
+  const getLabel = (option: { value: AssignmentType; label: string }) => {
+    return option.label
+      .replace('Parent A', parentAName)
+      .replace('Parent B', parentBName);
+  };
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 space-y-3">
+          {/* Name input */}
+          <div className="flex items-center gap-3">
+            <div
+              className={clsx(
+                'flex h-10 w-10 items-center justify-center rounded-full',
+                birthday.type === 'child'
+                  ? 'bg-purple-100'
+                  : birthday.type === 'parent-a'
+                  ? 'bg-blue-100'
+                  : 'bg-pink-100'
+              )}
+            >
+              <Cake
+                className={clsx(
+                  'h-5 w-5',
+                  birthday.type === 'child'
+                    ? 'text-purple-600'
+                    : birthday.type === 'parent-a'
+                    ? 'text-blue-600'
+                    : 'text-pink-600'
+                )}
+              />
+            </div>
+            <div className="flex-1">
+              <label
+                htmlFor={`birthday-name-${birthday.id}`}
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                {birthday.type === 'child' ? "Child's Name" : 'Name'}
+              </label>
+              <input
+                type="text"
+                id={`birthday-name-${birthday.id}`}
+                value={birthday.name}
+                onChange={(e) => onChange({ name: e.target.value })}
+                placeholder={
+                  birthday.type === 'child'
+                    ? "Child's name"
+                    : birthday.type === 'parent-a'
+                    ? parentAName
+                    : parentBName
+                }
+                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          {/* Date selection */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label
+                htmlFor={`birthday-month-${birthday.id}`}
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Month
+              </label>
+              <select
+                id={`birthday-month-${birthday.id}`}
+                value={birthday.month}
+                onChange={(e) =>
+                  onChange({
+                    month: parseInt(e.target.value, 10),
+                    // Adjust day if it exceeds new month's days
+                    day: Math.min(
+                      birthday.day,
+                      getDaysInMonth(parseInt(e.target.value, 10))
+                    ),
+                  })
+                }
+                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {MONTHS.map((month) => (
+                  <option key={month.value} value={month.value}>
+                    {month.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label
+                htmlFor={`birthday-day-${birthday.id}`}
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Day
+              </label>
+              <select
+                id={`birthday-day-${birthday.id}`}
+                value={birthday.day}
+                onChange={(e) =>
+                  onChange({ day: parseInt(e.target.value, 10) })
+                }
+                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(
+                  (day) => (
+                    <option key={day} value={day}>
+                      {day}
+                    </option>
+                  )
+                )}
+              </select>
+            </div>
+          </div>
+
+          {/* Assignment (only for children) */}
+          {!isParentBirthday && (
+            <div>
+              <label
+                htmlFor={`birthday-assignment-${birthday.id}`}
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Assignment
+              </label>
+              <select
+                id={`birthday-assignment-${birthday.id}`}
+                value={birthday.defaultAssignment}
+                onChange={(e) =>
+                  onChange({
+                    defaultAssignment: e.target.value as AssignmentType,
+                  })
+                }
+                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {ASSIGNMENT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {getLabel(option)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Parent birthday note */}
+          {isParentBirthday && (
+            <div className="rounded-lg bg-gray-50 p-2">
+              <p className="text-sm text-gray-600">
+                Always with {birthday.type === 'parent-a' ? parentAName : parentBName}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Remove button (only for children) */}
+        {canRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+            aria-label={`Remove ${birthday.name || 'birthday'}`}
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Birthdays configuration component.
+ * Allows configuration of children's and parents' birthdays.
+ */
+export function BirthdaysConfig({
+  birthdays,
+  onBirthdaysChange,
+  parentAName = 'Parent A',
+  parentBName = 'Parent B',
+}: BirthdaysConfigProps) {
+  // Separate birthdays by type
+  const childBirthdays = birthdays.filter((b) => b.type === 'child');
+  const parentBirthdays = birthdays.filter((b) => b.type !== 'child');
+
+  // Update a specific birthday
+  const updateBirthday = useCallback(
+    (id: string, updates: Partial<BirthdayConfig>) => {
+      const newBirthdays = birthdays.map((b) =>
+        b.id === id ? { ...b, ...updates } : b
+      );
+      onBirthdaysChange(newBirthdays);
+    },
+    [birthdays, onBirthdaysChange]
+  );
+
+  // Add a new child birthday
+  const addChildBirthday = useCallback(() => {
+    const newBirthday: BirthdayConfig = {
+      id: `child-${Date.now()}`,
+      name: '',
+      type: 'child',
+      month: 1,
+      day: 1,
+      defaultAssignment: 'alternate-odd-even',
+    };
+    onBirthdaysChange([...birthdays, newBirthday]);
+  }, [birthdays, onBirthdaysChange]);
+
+  // Remove a birthday
+  const removeBirthday = useCallback(
+    (id: string) => {
+      onBirthdaysChange(birthdays.filter((b) => b.id !== id));
+    },
+    [birthdays, onBirthdaysChange]
+  );
+
+  // Total days
+  const totalDays = birthdays.length;
+
+  return (
+    <div className="space-y-4">
+      {/* Header with total count */}
+      <div className="flex items-center justify-between">
+        <h4 className="text-lg font-semibold text-gray-900">Birthdays</h4>
+        <span className="rounded-full bg-purple-100 px-3 py-1 text-sm font-medium text-purple-700">
+          {totalDays} days total
+        </span>
+      </div>
+
+      {/* Children's birthdays */}
+      <div className="space-y-3">
+        <h5 className="text-sm font-medium text-gray-700">Children&apos;s Birthdays</h5>
+        {childBirthdays.length === 0 ? (
+          <p className="text-sm text-gray-500 italic">No children&apos;s birthdays configured</p>
+        ) : (
+          childBirthdays.map((birthday) => (
+            <BirthdayEntry
+              key={birthday.id}
+              birthday={birthday}
+              onChange={(updates) => updateBirthday(birthday.id, updates)}
+              onRemove={() => removeBirthday(birthday.id)}
+              parentAName={parentAName}
+              parentBName={parentBName}
+              canRemove={true}
+            />
+          ))
+        )}
+        <button
+          type="button"
+          onClick={addChildBirthday}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 p-3 text-sm font-medium text-gray-600 hover:border-gray-400 hover:text-gray-700 transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          Add Child&apos;s Birthday
+        </button>
+      </div>
+
+      {/* Parents' birthdays */}
+      <div className="space-y-3">
+        <h5 className="text-sm font-medium text-gray-700">Parents&apos; Birthdays</h5>
+        {parentBirthdays.map((birthday) => (
+          <BirthdayEntry
+            key={birthday.id}
+            birthday={birthday}
+            onChange={(updates) => updateBirthday(birthday.id, updates)}
+            parentAName={parentAName}
+            parentBName={parentBName}
+            canRemove={false}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
