@@ -95,7 +95,7 @@ function TemplateCard({
           {template.holidays.length} holidays
         </span>
         <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
-          {template.defaultExchangeTime.replace(':', ':')} exchange
+          {template.defaultExchangeTime} exchange
         </span>
       </div>
 
