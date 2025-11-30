@@ -8,8 +8,9 @@
 4. [Core Architectural Patterns](#core-architectural-patterns)
 5. [User Personas & Behavioral Dynamics](#user-personas--behavioral-dynamics)
 6. [Standard Custody Patterns](#standard-custody-patterns)
-7. [Calculation Methodologies](#calculation-methodologies)
-8. [Technical Constraints & Decisions](#technical-constraints--decisions)
+7. [Holiday Configuration Data Model](#holiday-configuration-data-model)
+8. [Calculation Methodologies](#calculation-methodologies)
+9. [Technical Constraints & Decisions](#technical-constraints--decisions)
 
 ---
 
@@ -580,6 +581,112 @@ interface CustomPattern {
 
 ---
 
+## Holiday Configuration Data Model
+
+Holidays represent Layer 2 in the priority stack—they override the base schedule (Layer 4) and seasonal schedules (Layer 3) but are overridden by vacations (Layer 1).
+
+### Holiday Categories
+
+Holidays are organized into four categories based on their duration and configuration complexity:
+
+| Category | Examples | Typical Duration | Day Impact |
+|----------|----------|------------------|------------|
+| `major-break` | Summer, Winter, Spring, Thanksgiving | 5-26 days each | 50+ days/year |
+| `weekend` | MLK Day, Memorial Day, Labor Day | 3 days (Fri-Sun or Sat-Mon) | 33 days/year |
+| `birthday` | Child's, Mother's, Father's | 1 day | 3+ days/year |
+| `religious` | Easter, Passover, Eid | Variable | User-defined |
+
+### Assignment Types
+
+Each holiday can be assigned using one of five methods:
+
+```typescript
+export type AssignmentType = 
+  | 'alternate-odd-even'   // Mom odd years, Dad even years (most common)
+  | 'always-parent-a'      // Always to Parent A (e.g., Father's Day)
+  | 'always-parent-b'      // Always to Parent B (e.g., Mother's Day)
+  | 'split-period'         // Split within the holiday (Winter Break only)
+  | 'selection-priority';  // Parents take turns choosing dates (Summer Vacation)
+```
+
+### Type Definitions
+
+```typescript
+export type HolidayCategory = 'major-break' | 'weekend' | 'birthday' | 'religious';
+
+export interface HolidayDefinition {
+  id: string;
+  name: string;
+  category: HolidayCategory;
+  defaultAssignment: AssignmentType;
+  dateCalculation: DateCalculation;
+  durationDays: number;
+  priority: number; // Higher = overrides lower priority holidays
+}
+
+// For calculating dynamic holiday dates
+export type DateCalculation = 
+  | { type: 'fixed'; month: number; day: number }                    // July 4
+  | { type: 'nth-weekday'; month: number; week: number; day: number } // 3rd Monday
+  | { type: 'last-weekday'; month: number; day: number }              // Last Monday of May
+  | { type: 'relative'; baseHoliday: string; offset: number }         // Day after Thanksgiving
+  | { type: 'user-defined' };                                         // User enters date
+
+// Winter Break special configuration (split at Dec 26 noon)
+export interface SplitPeriodConfig {
+  splitPoint: string;           // "12-26T12:00"
+  segment1Name: string;         // "Christmas"
+  segment2Name: string;         // "New Year's"
+  segment1Assignment: AssignmentType;
+  segment2Assignment: AssignmentType;
+}
+
+// Summer Vacation special configuration
+export interface SelectionPriorityConfig {
+  weeksPerParent: number;       // Usually 2 (total 4 weeks = 28 days)
+  selectionDeadline: string;    // "04-01" (April 1)
+  firstPickAlternates: boolean; // Parent A picks first in odd years
+}
+```
+
+### Predefined Weekend Holidays
+
+Based on the Nevada Eighth Judicial District Court Family Division Holiday Plan:
+
+| Holiday | Date Calculation | Default Assignment |
+|---------|------------------|-------------------|
+| Martin Luther King Jr. Day | 3rd Monday, January | Alternate Odd/Even |
+| Presidents' Day | 3rd Monday, February | Alternate Odd/Even |
+| Mother's Day | 2nd Sunday, May | Always Parent B |
+| Memorial Day | Last Monday, May | Alternate Odd/Even |
+| Father's Day | 3rd Sunday, June | Always Parent A |
+| Independence Day | July 4 (± weekend) | Alternate Odd/Even |
+| Labor Day | 1st Monday, September | Alternate Odd/Even |
+| Nevada Day | Last Friday, October | Alternate Odd/Even |
+| Halloween | October 31 (± weekend) | Alternate Odd/Even |
+| Veterans Day | November 11 (± weekend) | Alternate Odd/Even |
+
+### Holiday Impact on Timeshare
+
+When holidays are configured, they shift the base schedule percentage. The system calculates:
+
+```typescript
+interface HolidayImpact {
+  basePercentage: { parentA: number; parentB: number };      // Before holidays
+  adjustedPercentage: { parentA: number; parentB: number };  // After holidays
+  daysDelta: { parentA: number; parentB: number };           // Net change
+  breakdown: {
+    majorBreaks: { parentA: number; parentB: number };
+    weekendHolidays: { parentA: number; parentB: number };
+    birthdays: { parentA: number; parentB: number };
+  };
+}
+```
+
+**Example Impact:** A 50/50 schedule might become 47/53 after holidays if one parent gets more major breaks.
+
+---
+
 ## Calculation Methodologies
 
 ### Why Two Modes?
@@ -724,7 +831,37 @@ However, provide a toggle in settings to switch to "Precise Hours" for advanced 
     parentA: { name: 'John', colorClass: 'bg-blue-500' },
     parentB: { name: 'Sarah', colorClass: 'bg-pink-500' }
   },
-  // Future: holidays, vacations, etc.
+  holidays: {
+    preset: 'traditional', // 'traditional' | '50-50-split' | 'one-parent-all' | 'custom'
+    majorBreaks: {
+      springBreak: { enabled: true, startDate: '2025-03-17', endDate: '2025-03-23', assignment: 'alternate-odd-even' },
+      thanksgiving: { enabled: true, assignment: 'alternate-odd-even' },
+      winterBreak: { 
+        enabled: true, 
+        splitPoint: '12-26T12:00',
+        christmasAssignment: 'alternate-odd-even',
+        newYearAssignment: 'alternate-odd-even'
+      },
+      summerVacation: { enabled: true, weeksPerParent: 2, selectionDeadline: '04-01', firstPickYear2025: 'parentA' }
+    },
+    weekendHolidays: [
+      { id: 'mlk', enabled: true, assignment: 'alternate-odd-even' },
+      { id: 'presidents', enabled: true, assignment: 'alternate-odd-even' },
+      { id: 'mothers-day', enabled: true, assignment: 'always-parent-b' },
+      { id: 'memorial', enabled: true, assignment: 'alternate-odd-even' },
+      { id: 'fathers-day', enabled: true, assignment: 'always-parent-a' },
+      { id: 'independence', enabled: true, assignment: 'alternate-odd-even' },
+      { id: 'labor', enabled: true, assignment: 'alternate-odd-even' },
+      { id: 'nevada-day', enabled: true, assignment: 'alternate-odd-even' },
+      { id: 'halloween', enabled: true, assignment: 'alternate-odd-even' },
+      { id: 'veterans', enabled: true, assignment: 'alternate-odd-even' }
+    ],
+    birthdays: {
+      children: [{ name: 'Child 1', date: '06-15', assignment: 'alternate-odd-even' }],
+      mother: { date: '03-20', assignment: 'always-parent-b' },
+      father: { date: '09-10', assignment: 'always-parent-a' }
+    }
+  }
 }
 ```
 
