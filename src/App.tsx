@@ -5,7 +5,7 @@ import { CalendarGrid, MonthNavigation } from './components/calendar';
 import { Header, Container } from './components/layout';
 import { StatsPanel } from './components/stats';
 import { COLOR_OPTIONS } from './components/shared/colorOptions';
-import { WizardContainer, PatternPicker, ParentSetup, HolidaySelector } from './components/wizard';
+import { WizardContainer, PatternPicker, HolidaySelector } from './components/wizard';
 import { WizardProvider, useWizard, AppStateProvider, useAppState } from './context';
 import { getPatternByType } from './data/patterns';
 import { useCustodyEngine } from './hooks';
@@ -15,8 +15,7 @@ import type { ParentSetupData, HolidaySelection } from './components/wizard';
 
 /** Static wizard steps configuration - defined outside component to avoid recreation on each render */
 const WIZARD_STEPS = [
-  { title: 'Choose Schedule', description: 'Select a custody schedule pattern' },
-  { title: 'Parent Setup', description: 'Configure parent information' },
+  { title: 'Schedule Setup', description: 'Configure parents and schedule pattern' },
   { title: 'Holiday Settings', description: 'Set holiday custody rules' },
 ];
 
@@ -113,14 +112,8 @@ function WizardModal({
                   <PatternPicker
                     selectedPattern={state.pattern}
                     onPatternSelect={handlePatternSelect}
-                  />
-                );
-              }
-              if (currentStep === 1) {
-                return (
-                  <ParentSetup
-                    data={state.parentSetup}
-                    onChange={handleParentSetupChange}
+                    parentSetupData={state.parentSetup}
+                    onParentSetupChange={handleParentSetupChange}
                   />
                 );
               }

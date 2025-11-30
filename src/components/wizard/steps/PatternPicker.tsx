@@ -1,19 +1,22 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import clsx from 'clsx';
 import { Check, ChevronDown, Calendar } from 'lucide-react';
 import type { PatternType } from '../../../types';
 import { PATTERNS, getPatternGroups, getPatternByType, type PatternDefinition, type SplitType } from '../../../data/patterns';
 import { PatternThumbnail } from './PatternThumbnail';
+import { ColorPicker } from '../../shared/ColorPicker';
+import { DatePicker } from '../../shared/DatePicker';
+import type { ParentSetupData } from './parentSetupUtils';
 
 interface PatternPickerProps {
   /** Currently selected pattern type */
   selectedPattern: PatternType | null;
   /** Callback when a pattern is selected */
   onPatternSelect: (pattern: PatternType, split: SplitType) => void;
-  /** Color class for parent A in thumbnails */
-  parentAColor?: string;
-  /** Color class for parent B in thumbnails */
-  parentBColor?: string;
+  /** Parent setup data (names, colors) */
+  parentSetupData: ParentSetupData;
+  /** Callback when parent setup data changes */
+  onParentSetupChange: (data: ParentSetupData) => void;
 }
 
 /**
@@ -38,14 +41,14 @@ function getSplitBadgeClasses(split: SplitType): string {
 
 /**
  * Pattern selection step for the wizard.
- * Displays a grouped dropdown with a preview panel showing the selected pattern details.
+ * Includes parent name/color inputs above a grouped dropdown with preview panel.
  * Selecting a pattern implicitly sets both the pattern and split.
  */
 export function PatternPicker({
   selectedPattern,
   onPatternSelect,
-  parentAColor = 'bg-blue-500',
-  parentBColor = 'bg-pink-500',
+  parentSetupData,
+  onParentSetupChange,
 }: PatternPickerProps) {
   const patternGroups = getPatternGroups();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -53,6 +56,21 @@ export function PatternPicker({
 
   // Get the currently selected pattern details
   const selectedPatternDef = selectedPattern ? getPatternByType(selectedPattern) : null;
+
+  // Parent colors for thumbnails
+  const parentAColor = parentSetupData.parentAColor || 'bg-blue-500';
+  const parentBColor = parentSetupData.parentBColor || 'bg-pink-500';
+
+  // Handle parent data changes
+  const handleParentChange = useCallback(
+    (field: keyof ParentSetupData, value: string) => {
+      onParentSetupChange({
+        ...parentSetupData,
+        [field]: value,
+      });
+    },
+    [parentSetupData, onParentSetupChange]
+  );
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -83,7 +101,154 @@ export function PatternPicker({
 
   return (
     <div className="space-y-6">
-      {/* Dropdown selector */}
+      {/* Parent Information Section */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* Parent A */}
+        <div className="space-y-3 rounded-xl bg-gray-50 p-4">
+          <h4 className="font-medium text-gray-900">Parent A</h4>
+          
+          {/* Name input */}
+          <div className="space-y-1">
+            <label
+              htmlFor="parentAName"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Name
+            </label>
+            <input
+              type="text"
+              id="parentAName"
+              value={parentSetupData.parentAName}
+              onChange={(e) => handleParentChange('parentAName', e.target.value)}
+              placeholder="e.g., Mom, Dad, Sarah"
+              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Color picker */}
+          <ColorPicker
+            id="parentAColor"
+            value={parentSetupData.parentAColor}
+            onChange={(value) => handleParentChange('parentAColor', value)}
+            label="Color"
+          />
+        </div>
+
+        {/* Parent B */}
+        <div className="space-y-3 rounded-xl bg-gray-50 p-4">
+          <h4 className="font-medium text-gray-900">Parent B</h4>
+          
+          {/* Name input */}
+          <div className="space-y-1">
+            <label
+              htmlFor="parentBName"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Name
+            </label>
+            <input
+              type="text"
+              id="parentBName"
+              value={parentSetupData.parentBName}
+              onChange={(e) => handleParentChange('parentBName', e.target.value)}
+              placeholder="e.g., Mom, Dad, John"
+              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Color picker */}
+          <ColorPicker
+            id="parentBColor"
+            value={parentSetupData.parentBColor}
+            onChange={(value) => handleParentChange('parentBColor', value)}
+            label="Color"
+          />
+        </div>
+      </div>
+
+      {/* Color conflict warning */}
+      {parentSetupData.parentAColor && parentSetupData.parentBColor && 
+       parentSetupData.parentAColor === parentSetupData.parentBColor && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-sm text-amber-700">Parents must have different colors for calendar visibility</p>
+        </div>
+      )}
+
+      {/* Schedule Settings */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* Start date */}
+        <DatePicker
+          id="startDate"
+          value={parentSetupData.startDate}
+          onChange={(value) => handleParentChange('startDate', value)}
+          label="Schedule Start Date"
+        />
+
+        {/* Starting parent */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            Who has the child first?
+          </label>
+          <div className="flex gap-2">
+            <label
+              className={clsx(
+                'flex-1 flex cursor-pointer items-center justify-center gap-2 rounded-lg border p-3 transition-colors',
+                {
+                  'border-blue-500 bg-blue-50': parentSetupData.startingParent === 'parentA',
+                  'border-gray-200 hover:border-gray-300': parentSetupData.startingParent !== 'parentA',
+                }
+              )}
+            >
+              <input
+                type="radio"
+                name="startingParent"
+                value="parentA"
+                checked={parentSetupData.startingParent === 'parentA'}
+                onChange={(e) => handleParentChange('startingParent', e.target.value)}
+                className="sr-only"
+              />
+              <div
+                className={clsx(
+                  'h-4 w-4 rounded-full',
+                  parentSetupData.parentAColor || 'bg-blue-500'
+                )}
+              />
+              <span className="text-sm font-medium text-gray-900">
+                {parentSetupData.parentAName || 'Parent A'}
+              </span>
+            </label>
+            <label
+              className={clsx(
+                'flex-1 flex cursor-pointer items-center justify-center gap-2 rounded-lg border p-3 transition-colors',
+                {
+                  'border-blue-500 bg-blue-50': parentSetupData.startingParent === 'parentB',
+                  'border-gray-200 hover:border-gray-300': parentSetupData.startingParent !== 'parentB',
+                }
+              )}
+            >
+              <input
+                type="radio"
+                name="startingParent"
+                value="parentB"
+                checked={parentSetupData.startingParent === 'parentB'}
+                onChange={(e) => handleParentChange('startingParent', e.target.value)}
+                className="sr-only"
+              />
+              <div
+                className={clsx(
+                  'h-4 w-4 rounded-full',
+                  parentSetupData.parentBColor || 'bg-pink-500'
+                )}
+              />
+              <span className="text-sm font-medium text-gray-900">
+                {parentSetupData.parentBName || 'Parent B'}
+              </span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Schedule Dropdown selector */}
       <div ref={dropdownRef} className="relative">
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Select a Schedule Pattern
