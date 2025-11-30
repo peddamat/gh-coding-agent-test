@@ -4,6 +4,7 @@ import FocusTrap from 'focus-trap-react';
 import { CalendarGrid, MonthNavigation } from './components/calendar';
 import { Header, Container } from './components/layout';
 import { StatsPanel } from './components/stats';
+import { CourtDocumentPreview } from './components/export';
 import { COLOR_OPTIONS, DEFAULT_PARENT_A_COLOR, DEFAULT_PARENT_B_COLOR } from './components/shared/colorOptions';
 import { WizardContainer, PatternPicker, HolidaySelector, TemplateSelector } from './components/wizard';
 import type { TemplateOption } from './components/wizard/steps/TemplateSelector';
@@ -11,7 +12,7 @@ import { WizardProvider, useWizard, AppStateProvider, useAppState } from './cont
 import { getPatternByType, getSplitPercentages } from './data/patterns';
 import { syncBirthdaysWithChildren } from './utils/familyUtils';
 import { useCustodyEngine } from './hooks';
-import type { PatternType, AppConfig, HolidayUserConfig, BirthdayConfig, HolidayPresetType } from './types';
+import type { PatternType, AppConfig, HolidayUserConfig, BirthdayConfig, HolidayPresetType, AppState } from './types';
 import type { SplitPeriodConfig, SelectionPriorityConfig } from './types/holidays';
 import type { SplitType } from './data/patterns';
 import type { ParentSetupData } from './components/wizard';
@@ -206,11 +207,110 @@ function WizardModal({
 }
 
 /**
+ * Generates a filename for document export based on app state.
+ * Uses the family name (from Parent A's last name) and current date.
+ */
+function generateFilename(state: AppState): string {
+  const familyName = state.parents.parentA.name.split(' ')[1] || 'family';
+  const date = new Date().toISOString().split('T')[0];
+  return `custody-plan-${familyName.toLowerCase()}-${date}`;
+}
+
+/**
+ * Document preview modal overlay component.
+ * Shows the court document preview as a modal dialog over the main content.
+ */
+function DocumentPreviewModal({
+  isOpen,
+  onClose,
+  appState,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  appState: AppState;
+}) {
+  const titleId = useId();
+
+  // Handle escape key to close modal
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  // Log the generated filename for debugging
+  useEffect(() => {
+    if (isOpen) {
+      console.log('Document filename:', generateFilename(appState));
+    }
+  }, [isOpen, appState]);
+
+  if (!isOpen) return null;
+
+  return (
+    <FocusTrap>
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+          aria-hidden="true"
+        />
+
+        {/* Modal container - wider for document preview */}
+        <div className="relative z-10 w-full max-w-5xl max-h-[90vh] overflow-hidden mx-4 rounded-xl bg-white shadow-2xl" tabIndex={-1}>
+          {/* Hidden title for accessibility */}
+          <h2 id={titleId} className="sr-only">Court Document Preview</h2>
+          
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="Close document preview"
+          >
+            <X className="h-4 w-4 text-gray-600" />
+          </button>
+
+          {/* Document preview content */}
+          <div className="h-[90vh]">
+            <CourtDocumentPreview
+              appState={appState}
+              onClose={onClose}
+            />
+          </div>
+        </div>
+      </div>
+    </FocusTrap>
+  );
+}
+
+/**
  * Main application content component.
  * Uses WizardContext for wizard state management and AppStateContext for persistence.
  */
 function AppContent() {
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const [showDocumentPreview, setShowDocumentPreview] = useState(false);
   const { toAppState, reset } = useWizard();
   const { state: appState, dispatch: dispatchAppState, isLoaded } = useAppState();
 
@@ -241,10 +341,13 @@ function AppContent() {
     return getYearlyStats(currentMonth.getFullYear());
   }, [getYearlyStats, currentMonth]);
 
-  const handleExportClick = () => {
-    // Placeholder for future export functionality
-    console.log('Export clicked');
-  };
+  const handleExportClick = useCallback(() => {
+    setShowDocumentPreview(true);
+  }, []);
+
+  const handleDocumentPreviewClose = useCallback(() => {
+    setShowDocumentPreview(false);
+  }, []);
 
   const handleNewScheduleClick = useCallback(() => {
     setShowWizard(true);
@@ -319,6 +422,13 @@ function AppContent() {
         isOpen={showWizard}
         onClose={handleWizardClose}
         onFinish={handleWizardFinish}
+      />
+
+      {/* Document preview modal overlay */}
+      <DocumentPreviewModal
+        isOpen={showDocumentPreview}
+        onClose={handleDocumentPreviewClose}
+        appState={appState}
       />
 
       {/* Main content area */}
