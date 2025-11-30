@@ -1,5 +1,7 @@
-import { CalendarDay, ParentId } from '../../types';
+import { useMemo } from 'react';
+import { CalendarDay, ParentId, AppConfig } from '../../types';
 import { DayCell } from './DayCell';
+import { useCustodyEngine } from '../../hooks';
 
 interface CalendarGridProps {
   /** The month to display. If not provided, uses the current month. */
@@ -9,6 +11,12 @@ interface CalendarGridProps {
   weekStartsOnMonday?: boolean;
   parentAColor?: string;
   parentBColor?: string;
+  /** Parent A name for legend display */
+  parentAName?: string;
+  /** Parent B name for legend display */
+  parentBName?: string;
+  /** App configuration for real custody calculations. If not provided, uses mock data. */
+  appConfig?: AppConfig;
 }
 
 const DAY_HEADERS_SUNDAY_START = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -77,11 +85,34 @@ export function CalendarGrid({
   weekStartsOnMonday = false,
   parentAColor = 'bg-blue-500',
   parentBColor = 'bg-pink-500',
+  parentAName = 'Parent A',
+  parentBName = 'Parent B',
+  appConfig,
 }: CalendarGridProps) {
-  const displayMonth = currentMonth ?? new Date();
+  // Memoize displayMonth to avoid recreating on every render
+  const displayMonth = useMemo(() => currentMonth ?? new Date(), [currentMonth]);
   const dayHeaders = weekStartsOnMonday ? DAY_HEADERS_MONDAY_START : DAY_HEADERS_SUNDAY_START;
-  const mockDays = generateMockDays(displayMonth, weekStartsOnMonday);
   const monthTitle = getMonthTitle(displayMonth);
+
+  // Use custody engine if appConfig is provided
+  const { getMonthDays } = useCustodyEngine(
+    appConfig ?? {
+      startDate: new Date().toISOString().split('T')[0],
+      selectedPattern: 'alt-weeks',
+      startingParent: 'parentA',
+      exchangeTime: '18:00',
+    }
+  );
+
+  // Calculate days using useMemo for performance
+  const days = useMemo(() => {
+    if (appConfig) {
+      // Use real calculations from custody engine
+      return getMonthDays(displayMonth.getFullYear(), displayMonth.getMonth(), weekStartsOnMonday);
+    }
+    // Fallback to mock data
+    return generateMockDays(displayMonth, weekStartsOnMonday);
+  }, [appConfig, getMonthDays, displayMonth, weekStartsOnMonday]);
 
   return (
     <div className="rounded-xl bg-white p-6 shadow-lg">
@@ -106,7 +137,7 @@ export function CalendarGrid({
 
       {/* Calendar grid - 6 weeks × 7 days = 42 cells */}
       <div className="grid grid-cols-7 gap-2">
-        {mockDays.map((day) => (
+        {days.map((day) => (
           <DayCell
             key={day.date}
             day={day}
@@ -120,11 +151,11 @@ export function CalendarGrid({
       <div className="mt-6 flex items-center justify-center gap-6 border-t border-gray-100 pt-4">
         <div className="flex items-center gap-2">
           <div className={`h-4 w-4 rounded ${parentAColor}`} />
-          <span className="text-sm font-medium text-gray-600">Parent A</span>
+          <span className="text-sm font-medium text-gray-600">{parentAName}</span>
         </div>
         <div className="flex items-center gap-2">
           <div className={`h-4 w-4 rounded ${parentBColor}`} />
-          <span className="text-sm font-medium text-gray-600">Parent B</span>
+          <span className="text-sm font-medium text-gray-600">{parentBName}</span>
         </div>
       </div>
     </div>

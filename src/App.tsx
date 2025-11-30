@@ -267,7 +267,15 @@ function AppContent() {
 
               {/* Calendar Grid fills main area */}
               <div className="p-6">
-                <CalendarGrid currentMonth={currentMonth} hideTitle />
+                <CalendarGrid
+                  currentMonth={currentMonth}
+                  hideTitle
+                  appConfig={appConfig}
+                  parentAColor={wizardState.parentSetup.parentAColor || 'bg-blue-500'}
+                  parentBColor={wizardState.parentSetup.parentBColor || 'bg-pink-500'}
+                  parentAName={wizardState.parentSetup.parentAName || 'Parent A'}
+                  parentBName={wizardState.parentSetup.parentBName || 'Parent B'}
+                />
               </div>
             </div>
           </div>
