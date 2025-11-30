@@ -10,5 +10,6 @@ export {
   getPatternOwner,
   getOwnerForDate,
   generateMonthDays,
+  calculateYearlyStats,
 } from './useCustodyEngine';
-export type { UseCustodyEngineReturn } from './useCustodyEngine';
+export type { UseCustodyEngineReturn, YearlyStats } from './useCustodyEngine';

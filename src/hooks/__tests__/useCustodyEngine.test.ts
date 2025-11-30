@@ -10,6 +10,7 @@ import {
   getPatternOwner,
   getOwnerForDate,
   generateMonthDays,
+  calculateYearlyStats,
 } from '../useCustodyEngine';
 import type { AppConfig } from '../../types';
 
@@ -462,5 +463,103 @@ describe('Pattern split percentages', () => {
     // every-weekend: A gets 5 days, B gets 2 days per week = 71/29
     expect(percentageA).toBeGreaterThan(68);
     expect(percentageA).toBeLessThan(75);
+  });
+});
+
+describe('calculateYearlyStats', () => {
+  const baseConfig: AppConfig = {
+    startDate: '2025-01-01',
+    selectedPattern: 'alt-weeks',
+    startingParent: 'parentA',
+    exchangeTime: '18:00',
+  };
+
+  test('returns correct structure', () => {
+    const stats = calculateYearlyStats(2025, baseConfig);
+    
+    expect(stats).toHaveProperty('parentA');
+    expect(stats).toHaveProperty('parentB');
+    expect(stats).toHaveProperty('monthlyBreakdown');
+    
+    expect(stats.parentA).toHaveProperty('days');
+    expect(stats.parentA).toHaveProperty('percentage');
+    expect(stats.parentB).toHaveProperty('days');
+    expect(stats.parentB).toHaveProperty('percentage');
+  });
+
+  test('returns 12 months in breakdown', () => {
+    const stats = calculateYearlyStats(2025, baseConfig);
+    expect(stats.monthlyBreakdown).toHaveLength(12);
+    
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    stats.monthlyBreakdown.forEach((month, index) => {
+      expect(month.month).toBe(monthNames[index]);
+      expect(typeof month.parentADays).toBe('number');
+      expect(typeof month.parentBDays).toBe('number');
+    });
+  });
+
+  test('total days equals days in year', () => {
+    const stats = calculateYearlyStats(2025, baseConfig);
+    const totalDays = stats.parentA.days + stats.parentB.days;
+    expect(totalDays).toBe(365); // 2025 is not a leap year
+  });
+
+  test('total days equals 366 in leap year', () => {
+    const stats = calculateYearlyStats(2024, { ...baseConfig, startDate: '2024-01-01' });
+    const totalDays = stats.parentA.days + stats.parentB.days;
+    expect(totalDays).toBe(366); // 2024 is a leap year
+  });
+
+  test('percentages sum to 100', () => {
+    const stats = calculateYearlyStats(2025, baseConfig);
+    const totalPercentage = stats.parentA.percentage + stats.parentB.percentage;
+    expect(totalPercentage).toBeCloseTo(100, 1);
+  });
+
+  test('monthly breakdown sums to yearly total', () => {
+    const stats = calculateYearlyStats(2025, baseConfig);
+    
+    const monthlyTotalA = stats.monthlyBreakdown.reduce((sum, m) => sum + m.parentADays, 0);
+    const monthlyTotalB = stats.monthlyBreakdown.reduce((sum, m) => sum + m.parentBDays, 0);
+    
+    expect(monthlyTotalA).toBe(stats.parentA.days);
+    expect(monthlyTotalB).toBe(stats.parentB.days);
+  });
+
+  test('alt-weeks produces approximately 50/50 split', () => {
+    const stats = calculateYearlyStats(2025, { ...baseConfig, selectedPattern: 'alt-weeks' });
+    
+    expect(stats.parentA.percentage).toBeGreaterThan(49);
+    expect(stats.parentA.percentage).toBeLessThan(51);
+    expect(stats.parentB.percentage).toBeGreaterThan(49);
+    expect(stats.parentB.percentage).toBeLessThan(51);
+  });
+
+  test('all-to-one produces 100/0 split', () => {
+    const stats = calculateYearlyStats(2025, { ...baseConfig, selectedPattern: 'all-to-one' });
+    
+    expect(stats.parentA.days).toBe(365);
+    expect(stats.parentA.percentage).toBe(100);
+    expect(stats.parentB.days).toBe(0);
+    expect(stats.parentB.percentage).toBe(0);
+  });
+
+  test('each month has correct number of days', () => {
+    const stats = calculateYearlyStats(2025, baseConfig);
+    const expectedDays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]; // Days in each month for 2025
+    
+    stats.monthlyBreakdown.forEach((month, index) => {
+      const totalDaysInMonth = month.parentADays + month.parentBDays;
+      expect(totalDaysInMonth).toBe(expectedDays[index]);
+    });
+  });
+
+  test('handles leap year February correctly', () => {
+    const stats = calculateYearlyStats(2024, { ...baseConfig, startDate: '2024-01-01' });
+    const february = stats.monthlyBreakdown[1];
+    
+    const totalFebDays = february.parentADays + february.parentBDays;
+    expect(totalFebDays).toBe(29); // Leap year has 29 days in February
   });
 });

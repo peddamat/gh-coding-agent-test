@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import type { AppConfig, ParentId, CalendarDay } from '../types';
+import type { AppConfig, ParentId, CalendarDay, MonthlyBreakdown } from '../types';
 import { PATTERNS } from '../data/patterns';
 
 /**
@@ -194,6 +194,79 @@ export function generateMonthDays(
 }
 
 /**
+ * Yearly stats result interface.
+ */
+export interface YearlyStats {
+  /** Stats for parent A */
+  parentA: { days: number; percentage: number };
+  /** Stats for parent B */
+  parentB: { days: number; percentage: number };
+  /** Monthly breakdown for the year */
+  monthlyBreakdown: MonthlyBreakdown[];
+}
+
+/**
+ * Get the short month name for a given month index.
+ */
+function getMonthName(month: number): string {
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return monthNames[month];
+}
+
+/**
+ * Calculate yearly custody statistics for a given year.
+ * Returns the total days, percentage split, and monthly breakdown for both parents.
+ *
+ * @param year - The year to calculate stats for
+ * @param config - The app configuration
+ * @returns YearlyStats with day counts, percentages, and monthly breakdown
+ */
+export function calculateYearlyStats(year: number, config: AppConfig): YearlyStats {
+  let parentADays = 0;
+  let parentBDays = 0;
+  const monthlyBreakdown: MonthlyBreakdown[] = [];
+
+  // Iterate through each month
+  for (let month = 0; month < 12; month++) {
+    const daysInMonth = getDaysInMonth(year, month);
+    let monthParentA = 0;
+    let monthParentB = 0;
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = formatDateString(year, month, day);
+      const owner = getOwnerForDate(dateStr, config);
+
+      if (owner === 'parentA') {
+        parentADays++;
+        monthParentA++;
+      } else {
+        parentBDays++;
+        monthParentB++;
+      }
+    }
+
+    monthlyBreakdown.push({
+      month: getMonthName(month),
+      parentADays: monthParentA,
+      parentBDays: monthParentB,
+    });
+  }
+
+  const totalDays = parentADays + parentBDays;
+  return {
+    parentA: {
+      days: parentADays,
+      percentage: Math.round((parentADays / totalDays) * 10000) / 100,
+    },
+    parentB: {
+      days: parentBDays,
+      percentage: Math.round((parentBDays / totalDays) * 10000) / 100,
+    },
+    monthlyBreakdown,
+  };
+}
+
+/**
  * Hook return type for useCustodyEngine.
  */
 export interface UseCustodyEngineReturn {
@@ -201,6 +274,8 @@ export interface UseCustodyEngineReturn {
   getOwnerForDate: (date: string) => ParentId;
   /** Get calendar days for a specific month */
   getMonthDays: (year: number, month: number, weekStartsOnMonday?: boolean) => CalendarDay[];
+  /** Get yearly stats including total days, percentage, and monthly breakdown */
+  getYearlyStats: (year: number) => YearlyStats;
 }
 
 /**
@@ -208,7 +283,7 @@ export interface UseCustodyEngineReturn {
  * Provides functions to determine custody ownership for any date and generate calendar data.
  *
  * @param config - The app configuration containing pattern, start date, and starting parent
- * @returns Object with getOwnerForDate and getMonthDays functions
+ * @returns Object with getOwnerForDate, getMonthDays, and getYearlyStats functions
  */
 export function useCustodyEngine(config: AppConfig): UseCustodyEngineReturn {
   const getOwnerForDateFn = useCallback(
@@ -225,11 +300,19 @@ export function useCustodyEngine(config: AppConfig): UseCustodyEngineReturn {
     [config]
   );
 
+  const getYearlyStatsFn = useCallback(
+    (year: number): YearlyStats => {
+      return calculateYearlyStats(year, config);
+    },
+    [config]
+  );
+
   return useMemo(
     () => ({
       getOwnerForDate: getOwnerForDateFn,
       getMonthDays: getMonthDaysFn,
+      getYearlyStats: getYearlyStatsFn,
     }),
-    [getOwnerForDateFn, getMonthDaysFn]
+    [getOwnerForDateFn, getMonthDaysFn, getYearlyStatsFn]
   );
 }
