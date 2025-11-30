@@ -207,18 +207,6 @@ function WizardModal({
 }
 
 /**
- * Generates a filename for document export based on app state.
- * Uses the family name (from Parent A's last name) and current date.
- */
-function generateFilename(state: AppState): string {
-  const parentName = state.parents.parentA.name || '';
-  const nameParts = parentName.split(' ').filter(part => part.length > 0);
-  const familyName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0] || 'family';
-  const date = new Date().toISOString().split('T')[0];
-  return `custody-plan-${familyName.toLowerCase()}-${date}`;
-}
-
-/**
  * Document preview modal overlay component.
  * Shows the court document preview as a modal dialog over the main content.
  */
@@ -255,13 +243,6 @@ function DocumentPreviewModal({
       document.body.style.overflow = '';
     };
   }, [isOpen]);
-
-  // Log the generated filename for debugging
-  useEffect(() => {
-    if (isOpen) {
-      console.log('Document filename:', generateFilename(appState));
-    }
-  }, [isOpen, appState]);
 
   if (!isOpen) return null;
 

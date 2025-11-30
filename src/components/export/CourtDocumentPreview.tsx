@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Printer, Copy, X, Check } from 'lucide-react';
 import clsx from 'clsx';
 import type { AppState } from '../../types';
@@ -136,6 +136,16 @@ export function CourtDocumentPreview({
   onCopyText,
 }: CourtDocumentPreviewProps) {
   const [copySuccess, setCopySuccess] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clear any pending timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Generate the document from app state
   const courtDocument: CourtDocument = useMemo(
@@ -157,6 +167,11 @@ export function CourtDocumentPreview({
   }, [onPrint]);
 
   const handleCopyText = useCallback(async () => {
+    // Clear any existing timeout
+    if (copyTimeoutRef.current) {
+      clearTimeout(copyTimeoutRef.current);
+    }
+    
     try {
       await navigator.clipboard.writeText(plainText);
       setCopySuccess(true);
@@ -164,7 +179,7 @@ export function CourtDocumentPreview({
         onCopyText();
       }
       // Reset success state after 2 seconds
-      setTimeout(() => setCopySuccess(false), 2000);
+      copyTimeoutRef.current = setTimeout(() => setCopySuccess(false), 2000);
     } catch {
       // Fallback for browsers that don't support clipboard API
       const textArea = window.document.createElement('textarea');
@@ -179,7 +194,7 @@ export function CourtDocumentPreview({
       if (onCopyText) {
         onCopyText();
       }
-      setTimeout(() => setCopySuccess(false), 2000);
+      copyTimeoutRef.current = setTimeout(() => setCopySuccess(false), 2000);
     }
   }, [plainText, onCopyText]);
 

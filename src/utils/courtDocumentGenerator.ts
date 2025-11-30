@@ -149,29 +149,8 @@ function getHolidayName(holidayId: string): string {
   const holiday = getHolidayById(holidayId);
   if (holiday) return holiday.name;
   
-  // Fallback for holidays not in the main list
-  const nameMap: Record<string, string> = {
-    'new-years-day': "New Year's Day",
-    'easter': 'Easter Weekend',
-    'presidents-day': "Presidents' Day Weekend",
-    'spring-break': 'Spring Break',
-    'memorial-day': 'Memorial Day Weekend',
-    'independence-day': 'Independence Day',
-    'labor-day': 'Labor Day Weekend',
-    'nevada-day': 'Nevada Day Weekend',
-    'thanksgiving': 'Thanksgiving',
-    'winter-break': 'Winter Break',
-    'mlk-day': 'Martin Luther King Jr. Day Weekend',
-    'veterans-day': "Veterans' Day Weekend",
-    'mothers-day': "Mother's Day Weekend",
-    'fathers-day': "Father's Day Weekend",
-    'halloween': 'Halloween',
-    'child-birthday': "Child's Birthday",
-    'mother-birthday': "Mother's Birthday",
-    'father-birthday': "Father's Birthday",
-  };
-  
-  return nameMap[holidayId] || holidayId;
+  // If not found, just return the ID
+  return holidayId;
 }
 
 // ============================================================================
