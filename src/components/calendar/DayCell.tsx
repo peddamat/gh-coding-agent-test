@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { Star } from 'lucide-react';
 import type { CalendarDay } from '../../types';
 
 interface DayCellProps {
@@ -22,7 +23,15 @@ export function DayCell({ day, parentAColor, parentBColor }: DayCellProps) {
           'opacity-40': !day.isCurrentMonth,
         }
       )}
+      title={day.holidayName ? `${day.holidayName}` : undefined}
     >
+      {/* Holiday indicator */}
+      {day.isHolidayOverride && (
+        <div className="absolute top-0.5 right-0.5">
+          <Star className="h-3 w-3 text-yellow-300 fill-yellow-300" />
+        </div>
+      )}
+      
       <span
         className={clsx(
           'text-base font-semibold text-white drop-shadow-sm',

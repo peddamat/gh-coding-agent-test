@@ -10,7 +10,8 @@ import {
   type Dispatch,
 } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import type { AppState, AppConfig, ParentConfig, PatternType } from '../types';
+import type { AppState, AppConfig, ParentConfig, PatternType, HolidayState } from '../types';
+import { createDefaultHolidayConfigs, createDefaultBirthdayConfigs } from '../data/holidays';
 
 /**
  * Storage key for localStorage persistence.
@@ -25,6 +26,9 @@ export type AppStateAction =
   | { type: 'SET_CONFIG'; payload: AppConfig }
   | { type: 'SET_PARENTS'; payload: { parentA: ParentConfig; parentB: ParentConfig } }
   | { type: 'UPDATE_PATTERN'; payload: PatternType }
+  | { type: 'SET_HOLIDAYS'; payload: HolidayState }
+  | { type: 'UPDATE_HOLIDAY_CONFIGS'; payload: HolidayState['holidayConfigs'] }
+  | { type: 'UPDATE_BIRTHDAYS'; payload: HolidayState['birthdays'] }
   | { type: 'RESET' }
   | { type: 'LOAD_STATE'; payload: AppState };
 
@@ -34,6 +38,17 @@ export type AppStateAction =
 function getTodayDateString(): string {
   const today = new Date();
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Get default holiday state.
+ */
+function getDefaultHolidayState(): HolidayState {
+  return {
+    holidayConfigs: createDefaultHolidayConfigs(),
+    birthdays: createDefaultBirthdayConfigs(),
+    selectedPreset: undefined,
+  };
 }
 
 /**
@@ -51,6 +66,7 @@ export const initialAppState: AppState = {
     parentA: { name: 'Parent A', colorClass: 'bg-blue-500' },
     parentB: { name: 'Parent B', colorClass: 'bg-pink-500' },
   },
+  holidays: getDefaultHolidayState(),
 };
 
 /**
@@ -67,6 +83,24 @@ export function appStateReducer(state: AppState, action: AppStateAction): AppSta
       return {
         ...state,
         config: { ...state.config, selectedPattern: action.payload },
+      };
+    case 'SET_HOLIDAYS':
+      return { ...state, holidays: action.payload };
+    case 'UPDATE_HOLIDAY_CONFIGS':
+      return {
+        ...state,
+        holidays: {
+          ...(state.holidays ?? getDefaultHolidayState()),
+          holidayConfigs: action.payload,
+        },
+      };
+    case 'UPDATE_BIRTHDAYS':
+      return {
+        ...state,
+        holidays: {
+          ...(state.holidays ?? getDefaultHolidayState()),
+          birthdays: action.payload,
+        },
       };
     case 'RESET':
       return initialAppState;

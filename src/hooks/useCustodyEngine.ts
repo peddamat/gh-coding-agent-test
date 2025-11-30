@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from 'react';
-import type { AppConfig, ParentId, CalendarDay, MonthlyBreakdown } from '../types';
+import type { AppConfig, ParentId, CalendarDay, MonthlyBreakdown, HolidayState, HolidayUserConfig, AssignmentType } from '../types';
 import { PATTERNS } from '../data/patterns';
+import { getHolidayDates, getHolidayById } from '../data/holidays';
 
 /**
  * Date arithmetic utilities - CRITICAL: Use ISO 8601 strings to avoid DST issues.
@@ -168,6 +169,95 @@ export function getOwnerForDate(date: string, config: AppConfig): ParentId {
 }
 
 /**
+ * Get holiday information for a specific date.
+ * Returns the holiday config and name if the date is a holiday, or null otherwise.
+ */
+export function getHolidayForDate(
+  date: string,
+  holidayConfigs: HolidayUserConfig[]
+): { config: HolidayUserConfig; name: string } | null {
+  const dateYear = parseInt(date.split('-')[0], 10);
+
+  for (const config of holidayConfigs) {
+    if (!config.enabled) continue;
+
+    const holiday = getHolidayById(config.holidayId);
+    if (!holiday) continue;
+
+    const holidayDates = getHolidayDates(holiday, dateYear);
+    if (holidayDates.includes(date)) {
+      return { config, name: holiday.name };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Convert an assignment type to an actual parent ID for a given year.
+ */
+export function resolveAssignment(
+  assignment: AssignmentType,
+  year: number,
+  startingParent: ParentId
+): ParentId {
+  switch (assignment) {
+    case 'always-parent-a':
+      return 'parentA';
+    case 'always-parent-b':
+      return 'parentB';
+    case 'alternate-odd-even':
+      // Odd years = starting parent, even years = other parent
+      return year % 2 === 1 ? startingParent : getOtherParent(startingParent);
+    case 'split-period':
+      // Split period is handled at a higher level
+      return startingParent;
+    case 'selection-priority':
+      // Selection priority is handled at a higher level
+      return startingParent;
+    default:
+      return startingParent;
+  }
+}
+
+/**
+ * Get the custody owner for a date with holiday override consideration.
+ * Implements the 4-layer priority: Vacation > Holiday > Seasonal > Base
+ */
+export function getOwnerForDateWithHolidays(
+  date: string,
+  config: AppConfig,
+  holidays?: HolidayState
+): { owner: ParentId; holidayName?: string; isHolidayOverride: boolean } {
+  // Layer 1: Base schedule
+  const baseOwner = getOwnerForDate(date, config);
+
+  // If no holidays configured, return base
+  if (!holidays?.holidayConfigs || holidays.holidayConfigs.length === 0) {
+    return { owner: baseOwner, isHolidayOverride: false };
+  }
+
+  // Layer 2: Holiday override
+  const holidayInfo = getHolidayForDate(date, holidays.holidayConfigs);
+  if (holidayInfo) {
+    const year = parseInt(date.split('-')[0], 10);
+    const holidayOwner = resolveAssignment(
+      holidayInfo.config.assignment,
+      year,
+      config.startingParent
+    );
+    return {
+      owner: holidayOwner,
+      holidayName: holidayInfo.name,
+      isHolidayOverride: true,
+    };
+  }
+
+  // No holiday override, return base
+  return { owner: baseOwner, isHolidayOverride: false };
+}
+
+/**
  * Generate calendar days for a given month.
  * Returns 42 days (6 weeks) to fill a standard calendar grid.
  */
@@ -175,7 +265,8 @@ export function generateMonthDays(
   year: number,
   month: number,
   config: AppConfig,
-  weekStartsOnMonday: boolean = false
+  weekStartsOnMonday: boolean = false,
+  holidays?: HolidayState
 ): CalendarDay[] {
   const today = new Date();
   const todayStr = formatDateString(today.getFullYear(), today.getMonth(), today.getDate());
@@ -208,7 +299,12 @@ export function generateMonthDays(
     const isCurrentMonth = currentDate.getMonth() === month;
     const isTodayDate = dateStr === todayStr;
 
-    const owner = getOwnerForDate(dateStr, config);
+    // Get owner with holiday consideration
+    const { owner, holidayName, isHolidayOverride } = getOwnerForDateWithHolidays(
+      dateStr,
+      config,
+      holidays
+    );
 
     days.push({
       date: dateStr,
@@ -216,6 +312,8 @@ export function generateMonthDays(
       owner,
       isToday: isTodayDate,
       isCurrentMonth,
+      holidayName,
+      isHolidayOverride,
     });
   }
 
@@ -248,9 +346,14 @@ function getMonthName(month: number): string {
  *
  * @param year - The year to calculate stats for
  * @param config - The app configuration
+ * @param holidays - Optional holiday state for override consideration
  * @returns YearlyStats with day counts, percentages, and monthly breakdown
  */
-export function calculateYearlyStats(year: number, config: AppConfig): YearlyStats {
+export function calculateYearlyStats(
+  year: number,
+  config: AppConfig,
+  holidays?: HolidayState
+): YearlyStats {
   let parentADays = 0;
   let parentBDays = 0;
   const monthlyBreakdown: MonthlyBreakdown[] = [];
@@ -263,7 +366,7 @@ export function calculateYearlyStats(year: number, config: AppConfig): YearlySta
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = formatDateString(year, month, day);
-      const owner = getOwnerForDate(dateStr, config);
+      const { owner } = getOwnerForDateWithHolidays(dateStr, config, holidays);
 
       if (owner === 'parentA') {
         parentADays++;
@@ -305,6 +408,8 @@ export function calculateYearlyStats(year: number, config: AppConfig): YearlySta
 export interface UseCustodyEngineReturn {
   /** Get the custody owner for a specific date */
   getOwnerForDate: (date: string) => ParentId;
+  /** Get the custody owner for a specific date with holiday information */
+  getOwnerForDateWithHolidays: (date: string) => { owner: ParentId; holidayName?: string; isHolidayOverride: boolean };
   /** Get calendar days for a specific month */
   getMonthDays: (year: number, month: number, weekStartsOnMonday?: boolean) => CalendarDay[];
   /** Get yearly stats including total days, percentage, and monthly breakdown */
@@ -316,9 +421,10 @@ export interface UseCustodyEngineReturn {
  * Provides functions to determine custody ownership for any date and generate calendar data.
  *
  * @param config - The app configuration containing pattern, start date, and starting parent
+ * @param holidays - Optional holiday state for override consideration
  * @returns Object with getOwnerForDate, getMonthDays, and getYearlyStats functions
  */
-export function useCustodyEngine(config: AppConfig): UseCustodyEngineReturn {
+export function useCustodyEngine(config: AppConfig, holidays?: HolidayState): UseCustodyEngineReturn {
   const getOwnerForDateFn = useCallback(
     (date: string): ParentId => {
       return getOwnerForDate(date, config);
@@ -326,26 +432,34 @@ export function useCustodyEngine(config: AppConfig): UseCustodyEngineReturn {
     [config]
   );
 
+  const getOwnerForDateWithHolidaysFn = useCallback(
+    (date: string): { owner: ParentId; holidayName?: string; isHolidayOverride: boolean } => {
+      return getOwnerForDateWithHolidays(date, config, holidays);
+    },
+    [config, holidays]
+  );
+
   const getMonthDaysFn = useCallback(
     (year: number, month: number, weekStartsOnMonday: boolean = false): CalendarDay[] => {
-      return generateMonthDays(year, month, config, weekStartsOnMonday);
+      return generateMonthDays(year, month, config, weekStartsOnMonday, holidays);
     },
-    [config]
+    [config, holidays]
   );
 
   const getYearlyStatsFn = useCallback(
     (year: number): YearlyStats => {
-      return calculateYearlyStats(year, config);
+      return calculateYearlyStats(year, config, holidays);
     },
-    [config]
+    [config, holidays]
   );
 
   return useMemo(
     () => ({
       getOwnerForDate: getOwnerForDateFn,
+      getOwnerForDateWithHolidays: getOwnerForDateWithHolidaysFn,
       getMonthDays: getMonthDaysFn,
       getYearlyStats: getYearlyStatsFn,
     }),
-    [getOwnerForDateFn, getMonthDaysFn, getYearlyStatsFn]
+    [getOwnerForDateFn, getOwnerForDateWithHolidaysFn, getMonthDaysFn, getYearlyStatsFn]
   );
 }

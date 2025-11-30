@@ -1,3 +1,7 @@
+import type {
+  HolidayState,
+} from './holidays';
+
 export type ParentId = 'parentA' | 'parentB';
 export type PatternType =
   | 'alt-weeks'              // 50/50 - Alternating weeks (7-7)
@@ -28,6 +32,7 @@ export interface AppState {
     parentA: ParentConfig;
     parentB: ParentConfig;
   };
+  holidays?: HolidayState;
 }
 
 export interface CalendarDay {
@@ -36,6 +41,10 @@ export interface CalendarDay {
   owner: ParentId;
   isToday: boolean;
   isCurrentMonth: boolean;
+  /** Holiday name if this day is a holiday */
+  holidayName?: string;
+  /** Whether this day's owner is due to a holiday override */
+  isHolidayOverride?: boolean;
 }
 
 export interface TimeshareStats {
