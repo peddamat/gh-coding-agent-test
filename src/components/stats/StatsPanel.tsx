@@ -65,6 +65,8 @@ export function StatsPanel({
     resizeTimeoutRef.current = setTimeout(() => {
       if (window.innerWidth >= LG_BREAKPOINT) {
         setIsExpanded(true);
+      } else {
+        setIsExpanded(false);
       }
     }, RESIZE_DEBOUNCE_MS);
   }, []);
@@ -90,7 +92,7 @@ export function StatsPanel({
       <div className="border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Custody Summary</h2>
+            <h2 id="custody-summary-heading" className="text-lg font-bold text-gray-900">Custody Summary</h2>
             <p className="text-sm text-gray-500">Custody time breakdown</p>
           </div>
           {/* Toggle button - visible only on mobile */}
@@ -118,8 +120,10 @@ export function StatsPanel({
       {/* Collapsible content */}
       <div
         id="stats-panel-content"
-        className={`transition-all duration-300 ease-in-out ${
-          isExpanded ? 'max-h-none opacity-100' : 'max-h-0 overflow-hidden opacity-0 lg:max-h-none lg:opacity-100'
+        role="region"
+        aria-labelledby="custody-summary-heading"
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${
+          isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 lg:max-h-[2000px] lg:opacity-100'
         }`}
       >
         <div className="p-6">
