@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import clsx from 'clsx';
 import { Check, ChevronDown, Calendar } from 'lucide-react';
 import type { PatternType } from '../../../types';
-import { PATTERNS, getPatternGroups, getPatternByType, type PatternDefinition, type SplitType } from '../../../data/patterns';
+import { getPatternGroups, getPatternByType, type PatternDefinition, type SplitType } from '../../../data/patterns';
 import { PatternThumbnail } from './PatternThumbnail';
 import { ColorPicker } from '../../shared/ColorPicker';
 import { DatePicker } from '../../shared/DatePicker';
