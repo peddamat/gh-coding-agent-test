@@ -133,13 +133,15 @@ export function PatternPicker({
     });
   };
 
-  // Find the youngest child's name for display
-  const getYoungestChildName = (): string => {
-    if (parentSetupData.children.length === 0) return '';
-    const youngest = parentSetupData.children.reduce((prev, curr) =>
+  // Find the youngest child for display (filters out children without valid birthdates)
+  const getYoungestChild = (): Child | null => {
+    const childrenWithBirthdates = parentSetupData.children.filter(
+      (child) => child.birthdate && child.birthdate.match(/^\d{4}-\d{2}-\d{2}$/)
+    );
+    if (childrenWithBirthdates.length === 0) return null;
+    return childrenWithBirthdates.reduce((prev, curr) =>
       prev.birthdate > curr.birthdate ? prev : curr
     );
-    return youngest.name || 'youngest child';
   };
 
   // Close dropdown when clicking outside
@@ -411,17 +413,21 @@ export function PatternPicker({
         )}
 
         {/* Plan expiration display */}
-        {planExpiration && parentSetupData.children.length > 0 && (
-          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
-            <p className="text-sm text-green-700">
-              <span className="font-medium">Plan active until:</span>{' '}
-              {formatDateForDisplay(planExpiration)}{' '}
-              <span className="text-green-600">
-                (when {getYoungestChildName()} turns 18)
-              </span>
-            </p>
-          </div>
-        )}
+        {planExpiration && (() => {
+          const youngest = getYoungestChild();
+          if (!youngest) return null;
+          return (
+            <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+              <p className="text-sm text-green-700">
+                <span className="font-medium">Plan active until:</span>{' '}
+                {formatDateForDisplay(planExpiration)}{' '}
+                <span className="text-green-600">
+                  (when {youngest.name || 'youngest child'} turns {youngest.custodyEndAge || 18})
+                </span>
+              </p>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Schedule Settings */}
