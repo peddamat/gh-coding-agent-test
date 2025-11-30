@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { TimeshareDonutChart } from './TimeshareDonutChart';
 import { MonthlyTrendBarChart } from './MonthlyTrendBarChart';
@@ -25,6 +25,11 @@ export interface StatsPanelProps {
 const LG_BREAKPOINT = 1024;
 
 /**
+ * Debounce delay for resize events in milliseconds
+ */
+const RESIZE_DEBOUNCE_MS = 150;
+
+/**
  * Side panel component containing all custody statistics.
  * Features:
  * - TimeshareDonutChart showing custody split percentage
@@ -49,17 +54,31 @@ export function StatsPanel({
     return true;
   });
 
-  // Listen for window resize to auto-expand on desktop
-  useEffect(() => {
-    const handleResize = () => {
+  // Ref for debounce timeout
+  const resizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced resize handler
+  const handleResize = useCallback(() => {
+    if (resizeTimeoutRef.current) {
+      clearTimeout(resizeTimeoutRef.current);
+    }
+    resizeTimeoutRef.current = setTimeout(() => {
       if (window.innerWidth >= LG_BREAKPOINT) {
         setIsExpanded(true);
       }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    }, RESIZE_DEBOUNCE_MS);
   }, []);
+
+  // Listen for window resize to auto-expand on desktop
+  useEffect(() => {
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
+    };
+  }, [handleResize]);
 
   const toggleExpanded = () => {
     setIsExpanded((prev) => !prev);
@@ -100,7 +119,7 @@ export function StatsPanel({
       <div
         id="stats-panel-content"
         className={`transition-all duration-300 ease-in-out ${
-          isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 overflow-hidden opacity-0 lg:max-h-[2000px] lg:opacity-100'
+          isExpanded ? 'max-h-none opacity-100' : 'max-h-0 overflow-hidden opacity-0 lg:max-h-none lg:opacity-100'
         }`}
       >
         <div className="p-6">
