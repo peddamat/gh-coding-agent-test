@@ -123,13 +123,16 @@ export function AppStateProvider({ children }: AppStateProviderProps) {
   // Track if initial load is complete
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount (runs once)
+  // Note: storedState is intentionally omitted from deps array because:
+  // 1. It's read synchronously from localStorage on initial render
+  // 2. Adding it would cause infinite loops when state changes
+  // 3. We only want to load from storage once on mount
   useEffect(() => {
     if (storedState && !isLoaded) {
       dispatch({ type: 'LOAD_STATE', payload: storedState });
     }
     setIsLoaded(true);
-    // Only run once on mount - storedState is read synchronously from localStorage
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
