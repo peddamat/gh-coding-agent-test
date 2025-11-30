@@ -54,12 +54,19 @@ export interface CourtDocument {
 // ============================================================================
 
 /**
+ * Get the fallback name for a parent ID.
+ */
+function getDefaultParentName(parentId: ParentId): string {
+  return parentId === 'parentA' ? 'Parent A' : 'Parent B';
+}
+
+/**
  * Get the parent name for a given parent ID.
  */
 function getParentName(appState: AppState, parentId: ParentId): string {
   return parentId === 'parentA'
-    ? appState.parents.parentA.name || 'Parent A'
-    : appState.parents.parentB.name || 'Parent B';
+    ? appState.parents.parentA.name || getDefaultParentName(parentId)
+    : appState.parents.parentB.name || getDefaultParentName(parentId);
 }
 
 /**
@@ -72,7 +79,29 @@ function getParentLabel(appState: AppState, parentId: ParentId): string {
   if (parent.relationship === 'mom') return 'Mother';
   if (parent.relationship === 'guardian') return 'Guardian';
   
-  return parent.name || (parentId === 'parentA' ? 'Parent A' : 'Parent B');
+  return parent.name || getDefaultParentName(parentId);
+}
+
+/**
+ * Find which parent is the mother based on relationship configuration.
+ * Returns the parent ID if found, or 'parentB' as default (convention).
+ */
+function getMotherParentId(appState: AppState): ParentId {
+  if (appState.parents.parentA.relationship === 'mom') return 'parentA';
+  if (appState.parents.parentB.relationship === 'mom') return 'parentB';
+  // Default convention: parentB is typically the mother
+  return 'parentB';
+}
+
+/**
+ * Find which parent is the father based on relationship configuration.
+ * Returns the parent ID if found, or 'parentA' as default (convention).
+ */
+function getFatherParentId(appState: AppState): ParentId {
+  if (appState.parents.parentA.relationship === 'dad') return 'parentA';
+  if (appState.parents.parentB.relationship === 'dad') return 'parentB';
+  // Default convention: parentA is typically the father
+  return 'parentA';
 }
 
 /**
@@ -353,6 +382,12 @@ function generateBirthdaysSection(appState: AppState): CourtDocumentSection[] {
   const parentALabel = getParentLabel(appState, 'parentA');
   const parentBLabel = getParentLabel(appState, 'parentB');
   
+  // Determine which parent is the mother/father based on relationship configuration
+  const motherParentId = getMotherParentId(appState);
+  const fatherParentId = getFatherParentId(appState);
+  const motherLabel = getParentLabel(appState, motherParentId);
+  const fatherLabel = getParentLabel(appState, fatherParentId);
+  
   sections.push({
     type: 'section-title',
     content: 'BIRTHDAYS',
@@ -360,24 +395,24 @@ function generateBirthdaysSection(appState: AppState): CourtDocumentSection[] {
   
   const rows: string[][] = [];
   
-  // Mother's Day
+  // Mother's Day - assigned to the parent who is the mother
   const mothersDay = template.holidays.find(h => h.holidayId === 'mothers-day');
   if (mothersDay && mothersDay.enabled !== false) {
     rows.push([
       "Mother's Day Weekend",
-      parentBLabel,
-      parentBLabel,
+      motherLabel,
+      motherLabel,
       mothersDay.timingDescription || 'Saturday 9:00 AM through Sunday 6:00 PM',
     ]);
   }
   
-  // Father's Day
+  // Father's Day - assigned to the parent who is the father
   const fathersDay = template.holidays.find(h => h.holidayId === 'fathers-day');
   if (fathersDay && fathersDay.enabled !== false) {
     rows.push([
       "Father's Day Weekend",
-      parentALabel,
-      parentALabel,
+      fatherLabel,
+      fatherLabel,
       fathersDay.timingDescription || 'Saturday 9:00 AM through Sunday 6:00 PM',
     ]);
   }
@@ -413,18 +448,18 @@ function generateBirthdaysSection(appState: AppState): CourtDocumentSection[] {
     ]);
   }
   
-  // Parent birthdays
+  // Parent birthdays - assigned to the parent who is the mother/father
   rows.push([
     "Mother's Birthday",
-    parentBLabel,
-    parentBLabel,
+    motherLabel,
+    motherLabel,
     'As scheduled',
   ]);
   
   rows.push([
     "Father's Birthday",
-    parentALabel,
-    parentALabel,
+    fatherLabel,
+    fatherLabel,
     'As scheduled',
   ]);
   

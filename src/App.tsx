@@ -211,7 +211,9 @@ function WizardModal({
  * Uses the family name (from Parent A's last name) and current date.
  */
 function generateFilename(state: AppState): string {
-  const familyName = state.parents.parentA.name.split(' ')[1] || 'family';
+  const parentName = state.parents.parentA.name || '';
+  const nameParts = parentName.split(' ').filter(part => part.length > 0);
+  const familyName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0] || 'family';
   const date = new Date().toISOString().split('T')[0];
   return `custody-plan-${familyName.toLowerCase()}-${date}`;
 }
