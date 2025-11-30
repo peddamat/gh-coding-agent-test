@@ -220,8 +220,11 @@ describe('convertWizardToAppState', () => {
         parentBName: 'Jane',
         parentAColor: 'bg-blue-500',
         parentBColor: 'bg-pink-500',
+        parentARelationship: 'dad',
+        parentBRelationship: 'mom',
         startDate: '2025-01-15',
         startingParent: 'parentA',
+        children: [],
       },
       holidaySelections: getDefaultHolidaySelections(),
       enhancedHolidays: createDefaultEnhancedHolidayState(),
@@ -235,8 +238,12 @@ describe('convertWizardToAppState', () => {
     expect(appState.config.exchangeTime).toBe('15:00');
     expect(appState.parents.parentA.name).toBe('John');
     expect(appState.parents.parentA.colorClass).toBe('bg-blue-500');
+    expect(appState.parents.parentA.relationship).toBe('dad');
     expect(appState.parents.parentB.name).toBe('Jane');
     expect(appState.parents.parentB.colorClass).toBe('bg-pink-500');
+    expect(appState.parents.parentB.relationship).toBe('mom');
+    expect(appState.familyInfo.children).toEqual([]);
+    expect(appState.familyInfo.planStartDate).toBe('2025-01-15');
   });
 
   test('uses default pattern when pattern is null', () => {
@@ -266,8 +273,11 @@ describe('convertWizardToAppState', () => {
         parentBName: '',
         parentAColor: 'bg-blue-500',
         parentBColor: 'bg-pink-500',
+        parentARelationship: 'dad',
+        parentBRelationship: 'mom',
         startDate: '2025-01-01',
         startingParent: 'parentA',
+        children: [],
       },
       holidaySelections: getDefaultHolidaySelections(),
       enhancedHolidays: createDefaultEnhancedHolidayState(),
@@ -290,8 +300,11 @@ describe('convertWizardToAppState', () => {
         parentBName: 'Test2',
         parentAColor: 'bg-blue-500',
         parentBColor: 'bg-pink-500',
+        parentARelationship: 'guardian',
+        parentBRelationship: 'other',
         startDate: '2025-01-01',
         startingParent: 'parentB',
+        children: [],
       },
       holidaySelections: getDefaultHolidaySelections(),
       enhancedHolidays: createDefaultEnhancedHolidayState(),
@@ -300,5 +313,36 @@ describe('convertWizardToAppState', () => {
     const appState = convertWizardToAppState(wizardState);
 
     expect(appState.config.startingParent).toBe('parentB');
+  });
+
+  test('preserves children data correctly', () => {
+    const wizardState: WizardState = {
+      selectedTemplate: null,
+      isBuildYourOwn: true,
+      pattern: 'alt-weeks',
+      split: '50/50',
+      parentSetup: {
+        parentAName: 'John',
+        parentBName: 'Jane',
+        parentAColor: 'bg-blue-500',
+        parentBColor: 'bg-pink-500',
+        parentARelationship: 'dad',
+        parentBRelationship: 'mom',
+        startDate: '2025-01-01',
+        startingParent: 'parentA',
+        children: [
+          { id: '1', name: 'Emma', birthdate: '2018-05-15', custodyEndAge: 18 },
+          { id: '2', name: 'Liam', birthdate: '2020-09-22', custodyEndAge: 18 },
+        ],
+      },
+      holidaySelections: getDefaultHolidaySelections(),
+      enhancedHolidays: createDefaultEnhancedHolidayState(),
+    };
+
+    const appState = convertWizardToAppState(wizardState);
+
+    expect(appState.familyInfo.children).toHaveLength(2);
+    expect(appState.familyInfo.children[0].name).toBe('Emma');
+    expect(appState.familyInfo.children[1].name).toBe('Liam');
   });
 });
