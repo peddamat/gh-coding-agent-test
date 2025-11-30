@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import clsx from 'clsx';
-import { Check, ChevronDown, Calendar } from 'lucide-react';
-import type { PatternType } from '../../../types';
+import { Check, ChevronDown, Calendar, Plus, X, AlertTriangle } from 'lucide-react';
+import type { PatternType, Child } from '../../../types';
+import { RELATIONSHIP_OPTIONS } from '../../../types';
 import { getPatternGroups, getPatternByType, type PatternDefinition, type SplitType } from '../../../data/patterns';
 import { PatternThumbnail } from './PatternThumbnail';
 import { ColorPicker } from '../../shared/ColorPicker';
 import { DatePicker } from '../../shared/DatePicker';
 import type { ParentSetupData } from './parentSetupUtils';
+import { calculatePlanExpiration } from '../../../utils/familyUtils';
 
 interface PatternPickerProps {
   /** Currently selected pattern type */
@@ -72,6 +74,74 @@ export function PatternPicker({
     [parentSetupData, onParentSetupChange]
   );
 
+  // Add a new child to the list
+  const handleAddChild = useCallback(() => {
+    const newChild: Child = {
+      id: crypto.randomUUID(),
+      name: '',
+      birthdate: '',
+      custodyEndAge: 18,
+    };
+    onParentSetupChange({
+      ...parentSetupData,
+      children: [...parentSetupData.children, newChild],
+    });
+  }, [parentSetupData, onParentSetupChange]);
+
+  // Remove a child from the list
+  const handleRemoveChild = useCallback(
+    (childId: string) => {
+      onParentSetupChange({
+        ...parentSetupData,
+        children: parentSetupData.children.filter((c) => c.id !== childId),
+      });
+    },
+    [parentSetupData, onParentSetupChange]
+  );
+
+  // Update a specific child's data
+  const handleChildChange = useCallback(
+    (childId: string, field: keyof Child, value: string | number) => {
+      onParentSetupChange({
+        ...parentSetupData,
+        children: parentSetupData.children.map((child) =>
+          child.id === childId ? { ...child, [field]: value } : child
+        ),
+      });
+    },
+    [parentSetupData, onParentSetupChange]
+  );
+
+  // Calculate plan expiration date based on children
+  const planExpiration = calculatePlanExpiration(parentSetupData.children);
+
+  // Validate if a birthdate is in the past
+  const isBirthdateValid = (birthdate: string): boolean => {
+    if (!birthdate) return false;
+    const today = new Date().toISOString().split('T')[0];
+    return birthdate <= today;
+  };
+
+  // Format date for display (e.g., "May 15, 2036")
+  const formatDateForDisplay = (dateStr: string | null): string => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  // Find the youngest child's name for display
+  const getYoungestChildName = (): string => {
+    if (parentSetupData.children.length === 0) return '';
+    const youngest = parentSetupData.children.reduce((prev, curr) =>
+      prev.birthdate > curr.birthdate ? prev : curr
+    );
+    return youngest.name || 'youngest child';
+  };
+
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -101,6 +171,14 @@ export function PatternPicker({
 
   return (
     <div className="space-y-6">
+      {/* Section header */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900">Tell us about your family</h3>
+        <p className="mt-1 text-sm text-gray-600">
+          Enter information about both parents and your children.
+        </p>
+      </div>
+
       {/* Parent Information Section */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {/* Parent A */}
@@ -120,9 +198,31 @@ export function PatternPicker({
               id="parentAName"
               value={parentSetupData.parentAName}
               onChange={(e) => handleParentChange('parentAName', e.target.value)}
-              placeholder="e.g., Mom, Dad, Sarah"
+              placeholder="e.g., John, Sarah"
               className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
+          </div>
+
+          {/* Relationship dropdown */}
+          <div className="space-y-1">
+            <label
+              htmlFor="parentARelationship"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Role
+            </label>
+            <select
+              id="parentARelationship"
+              value={parentSetupData.parentARelationship}
+              onChange={(e) => handleParentChange('parentARelationship', e.target.value)}
+              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              {RELATIONSHIP_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Color picker */}
@@ -151,9 +251,31 @@ export function PatternPicker({
               id="parentBName"
               value={parentSetupData.parentBName}
               onChange={(e) => handleParentChange('parentBName', e.target.value)}
-              placeholder="e.g., Mom, Dad, John"
+              placeholder="e.g., John, Sarah"
               className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
+          </div>
+
+          {/* Relationship dropdown */}
+          <div className="space-y-1">
+            <label
+              htmlFor="parentBRelationship"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Role
+            </label>
+            <select
+              id="parentBRelationship"
+              value={parentSetupData.parentBRelationship}
+              onChange={(e) => handleParentChange('parentBRelationship', e.target.value)}
+              className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              {RELATIONSHIP_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Color picker */}
@@ -173,6 +295,134 @@ export function PatternPicker({
           <p className="text-sm text-amber-700">Parents must have different colors for calendar visibility</p>
         </div>
       )}
+
+      {/* Children Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="font-medium text-gray-900">Children</h4>
+            <p className="text-sm text-gray-500">Add information about your children</p>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-4">
+          {parentSetupData.children.length === 0 ? (
+            <div className="text-center py-4">
+              <p className="text-sm text-gray-500 mb-3">No children added yet</p>
+              <button
+                type="button"
+                onClick={handleAddChild}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Child
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Children list */}
+              <div className="space-y-3">
+                {parentSetupData.children.map((child, index) => {
+                  const birthdateInvalid = child.birthdate && !isBirthdateValid(child.birthdate);
+                  return (
+                    <div
+                      key={child.id}
+                      className="flex flex-wrap items-start gap-3 rounded-lg bg-white p-3 border border-gray-200"
+                    >
+                      {/* Child name */}
+                      <div className="flex-1 min-w-[120px]">
+                        <label
+                          htmlFor={`child-name-${child.id}`}
+                          className="block text-xs font-medium text-gray-500 mb-1"
+                        >
+                          Name
+                        </label>
+                        <input
+                          type="text"
+                          id={`child-name-${child.id}`}
+                          value={child.name}
+                          onChange={(e) => handleChildChange(child.id, 'name', e.target.value)}
+                          placeholder={`Child ${index + 1}`}
+                          className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      {/* Child birthdate */}
+                      <div className="flex-1 min-w-[150px]">
+                        <label
+                          htmlFor={`child-birthdate-${child.id}`}
+                          className="block text-xs font-medium text-gray-500 mb-1"
+                        >
+                          Birthdate
+                        </label>
+                        <input
+                          type="date"
+                          id={`child-birthdate-${child.id}`}
+                          value={child.birthdate}
+                          onChange={(e) => handleChildChange(child.id, 'birthdate', e.target.value)}
+                          max={new Date().toISOString().split('T')[0]}
+                          className={clsx(
+                            'block w-full rounded-lg border bg-white px-3 py-2 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1',
+                            birthdateInvalid
+                              ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                          )}
+                        />
+                        {birthdateInvalid && (
+                          <p className="mt-1 text-xs text-red-600">Birthdate must be in the past</p>
+                        )}
+                      </div>
+
+                      {/* Remove button */}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveChild(child.id)}
+                        className="mt-6 rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-red-500"
+                        aria-label={`Remove ${child.name || 'child'}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Add another child button */}
+              <button
+                type="button"
+                onClick={handleAddChild}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Child
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* No children warning */}
+        {parentSetupData.children.length === 0 && (
+          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+            <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-700">
+              Adding children helps calculate when the custody plan expires and enables birthday automations.
+            </p>
+          </div>
+        )}
+
+        {/* Plan expiration display */}
+        {planExpiration && parentSetupData.children.length > 0 && (
+          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+            <p className="text-sm text-green-700">
+              <span className="font-medium">Plan active until:</span>{' '}
+              {formatDateForDisplay(planExpiration)}{' '}
+              <span className="text-green-600">
+                (when {getYoungestChildName()} turns 18)
+              </span>
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Schedule Settings */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

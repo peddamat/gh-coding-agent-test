@@ -5,6 +5,25 @@ import type {
 export type ParentId = 'parentA' | 'parentB';
 
 // ============================================================================
+// Parent Relationship Type
+// ============================================================================
+
+/**
+ * Relationship type for each parent in the custody arrangement.
+ */
+export type ParentRelationship = 'mom' | 'dad' | 'guardian' | 'other';
+
+/**
+ * Options for parent relationship dropdown.
+ */
+export const RELATIONSHIP_OPTIONS: { value: ParentRelationship; label: string }[] = [
+  { value: 'mom', label: 'Mom' },
+  { value: 'dad', label: 'Dad' },
+  { value: 'guardian', label: 'Guardian' },
+  { value: 'other', label: 'Other' },
+];
+
+// ============================================================================
 // Child & Family Types
 // ============================================================================
 
@@ -50,6 +69,7 @@ export type PatternType =
 export interface ParentConfig {
   name: string;
   colorClass: string; // Tailwind bg class e.g., "bg-blue-500"
+  relationship?: ParentRelationship;
 }
 
 export interface AppConfig {

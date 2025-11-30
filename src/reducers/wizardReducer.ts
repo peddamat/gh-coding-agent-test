@@ -210,15 +210,17 @@ export function convertWizardToAppState(wizardState: WizardState): AppState {
       parentA: {
         name: parentSetup.parentAName || 'Parent A',
         colorClass: parentSetup.parentAColor || DEFAULT_PARENT_A_COLOR,
+        relationship: parentSetup.parentARelationship,
       },
       parentB: {
         name: parentSetup.parentBName || 'Parent B',
         colorClass: parentSetup.parentBColor || DEFAULT_PARENT_B_COLOR,
+        relationship: parentSetup.parentBRelationship,
       },
     },
     holidays,
     familyInfo: {
-      children: [],
+      children: parentSetup.children || [],
       planStartDate: startDate,
     },
   };

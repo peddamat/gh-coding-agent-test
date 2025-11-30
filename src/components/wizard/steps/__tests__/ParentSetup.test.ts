@@ -9,6 +9,24 @@ import {
 } from '../parentSetupUtils';
 import { COLOR_OPTIONS } from '../../../shared/colorOptions';
 
+/**
+ * Helper function to create valid ParentSetupData with optional overrides
+ */
+function createParentSetupData(overrides: Partial<ParentSetupData> = {}): ParentSetupData {
+  return {
+    parentAName: 'Alice',
+    parentBName: 'Bob',
+    parentAColor: 'bg-blue-500',
+    parentBColor: 'bg-pink-500',
+    parentARelationship: 'mom',
+    parentBRelationship: 'dad',
+    startDate: '2024-01-01',
+    startingParent: 'parentA',
+    children: [],
+    ...overrides,
+  };
+}
+
 describe('ParentSetup', () => {
   describe('getDefaultParentSetupData', () => {
     beforeEach(() => {
@@ -29,6 +47,9 @@ describe('ParentSetup', () => {
       expect(data.parentAColor).toBe(COLOR_OPTIONS[0].value);
       expect(data.parentBColor).toBe(COLOR_OPTIONS[1].value);
       expect(data.startingParent).toBe('parentA');
+      expect(data.parentARelationship).toBe('dad');
+      expect(data.parentBRelationship).toBe('mom');
+      expect(data.children).toEqual([]);
     });
 
     test('returns today\'s date as start date', () => {
@@ -46,14 +67,7 @@ describe('ParentSetup', () => {
 
   describe('validateParentSetup', () => {
     test('validates missing parent A name', () => {
-      const data: ParentSetupData = {
-        parentAName: '',
-        parentBName: 'Bob',
-        parentAColor: 'bg-blue-500',
-        parentBColor: 'bg-pink-500',
-        startDate: '2024-01-01',
-        startingParent: 'parentA',
-      };
+      const data = createParentSetupData({ parentAName: '' });
 
       const errors = validateParentSetup(data);
       
@@ -62,14 +76,7 @@ describe('ParentSetup', () => {
     });
 
     test('validates missing parent B name', () => {
-      const data: ParentSetupData = {
-        parentAName: 'Alice',
-        parentBName: '',
-        parentAColor: 'bg-blue-500',
-        parentBColor: 'bg-pink-500',
-        startDate: '2024-01-01',
-        startingParent: 'parentA',
-      };
+      const data = createParentSetupData({ parentBName: '' });
 
       const errors = validateParentSetup(data);
       
@@ -78,14 +85,7 @@ describe('ParentSetup', () => {
     });
 
     test('validates missing parent A color', () => {
-      const data: ParentSetupData = {
-        parentAName: 'Alice',
-        parentBName: 'Bob',
-        parentAColor: '',
-        parentBColor: 'bg-pink-500',
-        startDate: '2024-01-01',
-        startingParent: 'parentA',
-      };
+      const data = createParentSetupData({ parentAColor: '' });
 
       const errors = validateParentSetup(data);
       
@@ -93,14 +93,7 @@ describe('ParentSetup', () => {
     });
 
     test('validates missing parent B color', () => {
-      const data: ParentSetupData = {
-        parentAName: 'Alice',
-        parentBName: 'Bob',
-        parentAColor: 'bg-blue-500',
-        parentBColor: '',
-        startDate: '2024-01-01',
-        startingParent: 'parentA',
-      };
+      const data = createParentSetupData({ parentBColor: '' });
 
       const errors = validateParentSetup(data);
       
@@ -108,14 +101,7 @@ describe('ParentSetup', () => {
     });
 
     test('validates missing start date', () => {
-      const data: ParentSetupData = {
-        parentAName: 'Alice',
-        parentBName: 'Bob',
-        parentAColor: 'bg-blue-500',
-        parentBColor: 'bg-pink-500',
-        startDate: '',
-        startingParent: 'parentA',
-      };
+      const data = createParentSetupData({ startDate: '' });
 
       const errors = validateParentSetup(data);
       
@@ -123,14 +109,10 @@ describe('ParentSetup', () => {
     });
 
     test('detects color conflict when both parents have same color', () => {
-      const data: ParentSetupData = {
-        parentAName: 'Alice',
-        parentBName: 'Bob',
+      const data = createParentSetupData({
         parentAColor: 'bg-blue-500',
         parentBColor: 'bg-blue-500',
-        startDate: '2024-01-01',
-        startingParent: 'parentA',
-      };
+      });
 
       const errors = validateParentSetup(data);
       
@@ -138,14 +120,7 @@ describe('ParentSetup', () => {
     });
 
     test('returns no errors for valid data', () => {
-      const data: ParentSetupData = {
-        parentAName: 'Alice',
-        parentBName: 'Bob',
-        parentAColor: 'bg-blue-500',
-        parentBColor: 'bg-pink-500',
-        startDate: '2024-01-01',
-        startingParent: 'parentA',
-      };
+      const data = createParentSetupData();
 
       const errors = validateParentSetup(data);
       
@@ -153,14 +128,10 @@ describe('ParentSetup', () => {
     });
 
     test('trims whitespace when validating names', () => {
-      const data: ParentSetupData = {
+      const data = createParentSetupData({
         parentAName: '   ',
         parentBName: '   ',
-        parentAColor: 'bg-blue-500',
-        parentBColor: 'bg-pink-500',
-        startDate: '2024-01-01',
-        startingParent: 'parentA',
-      };
+      });
 
       const errors = validateParentSetup(data);
       
@@ -171,40 +142,28 @@ describe('ParentSetup', () => {
 
   describe('isParentSetupValid', () => {
     test('returns false when data is invalid', () => {
-      const data: ParentSetupData = {
+      const data = createParentSetupData({
         parentAName: '',
         parentBName: '',
         parentAColor: '',
         parentBColor: '',
         startDate: '',
-        startingParent: 'parentA',
-      };
+      });
 
       expect(isParentSetupValid(data)).toBe(false);
     });
 
     test('returns true when data is valid', () => {
-      const data: ParentSetupData = {
-        parentAName: 'Alice',
-        parentBName: 'Bob',
-        parentAColor: 'bg-blue-500',
-        parentBColor: 'bg-pink-500',
-        startDate: '2024-01-01',
-        startingParent: 'parentA',
-      };
+      const data = createParentSetupData();
 
       expect(isParentSetupValid(data)).toBe(true);
     });
 
     test('returns false when parents have same color', () => {
-      const data: ParentSetupData = {
-        parentAName: 'Alice',
-        parentBName: 'Bob',
+      const data = createParentSetupData({
         parentAColor: 'bg-blue-500',
         parentBColor: 'bg-blue-500',
-        startDate: '2024-01-01',
-        startingParent: 'parentA',
-      };
+      });
 
       expect(isParentSetupValid(data)).toBe(false);
     });
@@ -212,19 +171,8 @@ describe('ParentSetup', () => {
 
   describe('ParentSetupData types', () => {
     test('startingParent can be parentA or parentB', () => {
-      const dataA: ParentSetupData = {
-        parentAName: 'Alice',
-        parentBName: 'Bob',
-        parentAColor: 'bg-blue-500',
-        parentBColor: 'bg-pink-500',
-        startDate: '2024-01-01',
-        startingParent: 'parentA',
-      };
-
-      const dataB: ParentSetupData = {
-        ...dataA,
-        startingParent: 'parentB',
-      };
+      const dataA = createParentSetupData({ startingParent: 'parentA' });
+      const dataB = createParentSetupData({ startingParent: 'parentB' });
 
       expect(dataA.startingParent).toBe('parentA');
       expect(dataB.startingParent).toBe('parentB');
@@ -233,28 +181,56 @@ describe('ParentSetup', () => {
 
   describe('toAppStateFormat', () => {
     test('transforms ParentSetupData to AppState format', () => {
-      const data: ParentSetupData = {
-        parentAName: 'Alice',
-        parentBName: 'Bob',
-        parentAColor: 'bg-blue-500',
-        parentBColor: 'bg-pink-500',
-        startDate: '2024-01-01',
-        startingParent: 'parentA',
-      };
+      const data = createParentSetupData({
+        children: [
+          { id: '1', name: 'Child 1', birthdate: '2020-01-01', custodyEndAge: 18 },
+        ],
+      });
 
       const result = toAppStateFormat(data);
 
       expect(result.parents.parentA.name).toBe('Alice');
       expect(result.parents.parentA.colorClass).toBe('bg-blue-500');
+      expect(result.parents.parentA.relationship).toBe('mom');
       expect(result.parents.parentB.name).toBe('Bob');
       expect(result.parents.parentB.colorClass).toBe('bg-pink-500');
+      expect(result.parents.parentB.relationship).toBe('dad');
       expect(result.config.startDate).toBe('2024-01-01');
       expect(result.config.startingParent).toBe('parentA');
+      expect(result.familyInfo.children).toHaveLength(1);
+      expect(result.familyInfo.planStartDate).toBe('2024-01-01');
     });
   });
 
   describe('fromAppStateFormat', () => {
     test('transforms AppState format to ParentSetupData', () => {
+      const parents = {
+        parentA: { name: 'Alice', colorClass: 'bg-blue-500', relationship: 'mom' as const },
+        parentB: { name: 'Bob', colorClass: 'bg-pink-500', relationship: 'dad' as const },
+      };
+      const config = {
+        startDate: '2024-01-01',
+        startingParent: 'parentA' as const,
+      };
+      const familyInfo = {
+        children: [{ id: '1', name: 'Child 1', birthdate: '2020-01-01', custodyEndAge: 18 }],
+        planStartDate: '2024-01-01',
+      };
+
+      const result = fromAppStateFormat(parents, config, familyInfo);
+
+      expect(result.parentAName).toBe('Alice');
+      expect(result.parentBName).toBe('Bob');
+      expect(result.parentAColor).toBe('bg-blue-500');
+      expect(result.parentBColor).toBe('bg-pink-500');
+      expect(result.parentARelationship).toBe('mom');
+      expect(result.parentBRelationship).toBe('dad');
+      expect(result.startDate).toBe('2024-01-01');
+      expect(result.startingParent).toBe('parentA');
+      expect(result.children).toHaveLength(1);
+    });
+
+    test('uses defaults when relationship is not provided', () => {
       const parents = {
         parentA: { name: 'Alice', colorClass: 'bg-blue-500' },
         parentB: { name: 'Bob', colorClass: 'bg-pink-500' },
@@ -266,26 +242,26 @@ describe('ParentSetup', () => {
 
       const result = fromAppStateFormat(parents, config);
 
-      expect(result.parentAName).toBe('Alice');
-      expect(result.parentBName).toBe('Bob');
-      expect(result.parentAColor).toBe('bg-blue-500');
-      expect(result.parentBColor).toBe('bg-pink-500');
-      expect(result.startDate).toBe('2024-01-01');
-      expect(result.startingParent).toBe('parentA');
+      expect(result.parentARelationship).toBe('dad');
+      expect(result.parentBRelationship).toBe('mom');
+      expect(result.children).toEqual([]);
     });
 
     test('round-trip transformation preserves data', () => {
-      const original: ParentSetupData = {
+      const original = createParentSetupData({
         parentAName: 'Sarah',
         parentBName: 'John',
         parentAColor: 'bg-green-500',
         parentBColor: 'bg-purple-500',
+        parentARelationship: 'guardian',
+        parentBRelationship: 'other',
         startDate: '2024-06-15',
         startingParent: 'parentB',
-      };
+        children: [{ id: '1', name: 'Child 1', birthdate: '2020-01-01', custodyEndAge: 18 }],
+      });
 
       const appState = toAppStateFormat(original);
-      const result = fromAppStateFormat(appState.parents, appState.config);
+      const result = fromAppStateFormat(appState.parents, appState.config, appState.familyInfo);
 
       expect(result).toEqual(original);
     });

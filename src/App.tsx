@@ -275,6 +275,9 @@ function AppContent() {
     if (newAppState.holidays) {
       dispatchAppState({ type: 'SET_HOLIDAYS', payload: newAppState.holidays });
     }
+    if (newAppState.familyInfo) {
+      dispatchAppState({ type: 'SET_FAMILY_INFO', payload: newAppState.familyInfo });
+    }
     
     console.log('Wizard finished with AppState:', newAppState);
   };
