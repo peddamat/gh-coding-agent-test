@@ -1,4 +1,4 @@
-import { Download, Calendar, Plus, RotateCcw } from 'lucide-react';
+import { FileText, Calendar, Plus, RotateCcw } from 'lucide-react';
 
 export interface HeaderProps {
   /** Optional callback for when the export button is clicked */
@@ -47,8 +47,8 @@ export function Header({ onExportClick, onNewScheduleClick, onResetClick }: Head
             onClick={onExportClick}
             className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-150 hover:from-blue-500 hover:to-blue-600 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
           >
-            <Download className="h-4 w-4" />
-            Export
+            <FileText className="h-4 w-4" />
+            Export Document
           </button>
         </div>
       </div>
