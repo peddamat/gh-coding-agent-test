@@ -412,7 +412,7 @@ export function MajorBreaksConfig({
             {/* First pick */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                First pick in {year} (odd year)
+                First pick in {year} ({year % 2 === 1 ? 'odd' : 'even'} year)
               </label>
               <div className="flex gap-2">
                 <label

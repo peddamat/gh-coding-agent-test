@@ -544,6 +544,10 @@ export function getHolidayDates(holiday: HolidayDefinition, year: number): strin
       break;
     }
     case 'date-range': {
+      // For date ranges that cross year boundaries (e.g., Winter Break Dec 23 - Jan 2):
+      // - If endMonth < startMonth, the range crosses into the next year
+      // - Example: startMonth=12, endMonth=1 → endYear = year + 1
+      // - For Winter Break in 2025: Dec 23, 2025 to Jan 2, 2026
       const startDate = `${year}-${String(dateCalculation.startMonth).padStart(2, '0')}-${String(dateCalculation.startDay).padStart(2, '0')}`;
       const endYear = dateCalculation.endMonth < dateCalculation.startMonth ? year + 1 : year;
       const endDate = `${endYear}-${String(dateCalculation.endMonth).padStart(2, '0')}-${String(dateCalculation.endDay).padStart(2, '0')}`;

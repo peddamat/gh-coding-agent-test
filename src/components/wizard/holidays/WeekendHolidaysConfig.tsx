@@ -69,11 +69,14 @@ export function WeekendHolidaysConfig({
         // Only update weekend holidays
         const isWeekendHoliday = WEEKEND_HOLIDAYS.some((h) => h.id === c.holidayId);
         if (isWeekendHoliday) {
-          // Special case: Mother's Day defaults to Parent B
+          // Parent-specific holidays: Mother's Day and Father's Day have special defaults.
+          // Following Nevada court tradition, these holidays are typically spent with the
+          // respective parent regardless of the batch assignment, unless explicitly overridden.
+          // When "All to Parent A" is selected, Mother's Day stays with Parent B (mother).
+          // When "All to Parent B" is selected, Father's Day stays with Parent A (father).
           if (c.holidayId === 'mothers-day' && assignment === 'always-parent-a') {
             return { ...c, assignment: 'always-parent-b' as AssignmentType };
           }
-          // Special case: Father's Day defaults to Parent A
           if (c.holidayId === 'fathers-day' && assignment === 'always-parent-b') {
             return { ...c, assignment: 'always-parent-a' as AssignmentType };
           }

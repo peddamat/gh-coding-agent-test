@@ -97,8 +97,17 @@ export function HolidayImpactPreview({
     const baseDaysA = (basePercentageA / 100) * 365;
     const baseDaysB = (basePercentageB / 100) * 365;
     
-    // Adjusted days after holiday impact
-    // Holidays override base schedule, so we add/subtract net impact
+    // Holiday Impact Calculation:
+    // When holidays override the base schedule, we need to account for:
+    // 1. The days ADDED to each parent from holidays (totalImpactA/B)
+    // 2. The days REMOVED from base schedule that are now holidays
+    // 
+    // Example: If base is 50/50 (182.5 days each) and there are 20 holiday days:
+    // - Without override: Each parent would have ~10 of those holiday days (50%)
+    // - With override: Parent A might get 15 holidays, Parent B gets 5
+    // 
+    // So adjusted = baseDays + holidayDaysGained - holidayDaysFromBase
+    //             = baseDays + totalImpactX - (totalHolidayDays * basePercentageX / 100)
     const adjustedDaysA = baseDaysA + totalImpactA - (totalHolidayDays * basePercentageA / 100);
     const adjustedDaysB = baseDaysB + totalImpactB - (totalHolidayDays * basePercentageB / 100);
     

@@ -195,6 +195,13 @@ export function getHolidayForDate(
 
 /**
  * Convert an assignment type to an actual parent ID for a given year.
+ * 
+ * For 'alternate-odd-even':
+ * - Odd years (2025, 2027, etc.): Holiday goes to the starting parent (typically Parent A)
+ * - Even years (2024, 2026, etc.): Holiday goes to the other parent (typically Parent B)
+ * 
+ * This follows the Nevada court holiday document convention where odd/even year
+ * alternation is used for fair distribution of holidays over time.
  */
 export function resolveAssignment(
   assignment: AssignmentType,
@@ -207,7 +214,8 @@ export function resolveAssignment(
     case 'always-parent-b':
       return 'parentB';
     case 'alternate-odd-even':
-      // Odd years = starting parent, even years = other parent
+      // Odd years (2025, 2027) = starting parent
+      // Even years (2024, 2026) = other parent
       return year % 2 === 1 ? startingParent : getOtherParent(startingParent);
     case 'split-period':
       // Split period is handled at a higher level
