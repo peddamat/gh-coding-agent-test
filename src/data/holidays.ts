@@ -7,6 +7,7 @@ import type {
   HolidayUserConfig,
   BirthdayConfig,
 } from '../types/holidays';
+import { getExpandedHolidayDates, getExpansionRuleForHoliday } from '../utils/holidayExpansion';
 
 /**
  * All 11 Weekend Holidays defined with correct date calculations.
@@ -510,9 +511,26 @@ export function calculateLastWeekday(year: number, month: number, weekday: numbe
 /**
  * Get the date(s) for a holiday in a specific year.
  * Returns an array of ISO date strings.
+ * 
+ * This function applies conditional expansion rules for holidays that depend
+ * on what day of week they fall on (e.g., July 4th, Veterans Day).
  */
 export function getHolidayDates(holiday: HolidayDefinition, year: number): string[] {
-  const { dateCalculation, durationDays } = holiday;
+  const { dateCalculation, durationDays, id } = holiday;
+  
+  // Check if this holiday has a conditional expansion rule
+  const expansionRule = getExpansionRuleForHoliday(id);
+  
+  // For holidays with expansion rules (like July 4, Veterans Day, Halloween),
+  // calculate the base date first, then apply the expansion rule
+  if (expansionRule) {
+    const baseDate = getHolidayBaseDate(dateCalculation, year);
+    if (baseDate) {
+      return getExpandedHolidayDates(baseDate, expansionRule);
+    }
+  }
+  
+  // Standard date calculation for holidays without expansion rules
   const dates: string[] = [];
 
   switch (dateCalculation.type) {
@@ -570,6 +588,23 @@ export function getHolidayDates(holiday: HolidayDefinition, year: number): strin
   }
 
   return dates;
+}
+
+/**
+ * Get the base date for a holiday (before expansion).
+ * This is used by holidays with conditional expansion rules.
+ */
+function getHolidayBaseDate(dateCalculation: HolidayDefinition['dateCalculation'], year: number): string | null {
+  switch (dateCalculation.type) {
+    case 'fixed':
+      return `${year}-${String(dateCalculation.month).padStart(2, '0')}-${String(dateCalculation.day).padStart(2, '0')}`;
+    case 'nth-weekday':
+      return calculateNthWeekday(year, dateCalculation.month, dateCalculation.weekday, dateCalculation.nth);
+    case 'last-weekday':
+      return calculateLastWeekday(year, dateCalculation.month, dateCalculation.weekday);
+    default:
+      return null;
+  }
 }
 
 /**
