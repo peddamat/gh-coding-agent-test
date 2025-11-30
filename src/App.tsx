@@ -3,12 +3,12 @@ import { X } from 'lucide-react';
 import FocusTrap from 'focus-trap-react';
 import { CalendarGrid, MonthNavigation } from './components/calendar';
 import { Header, Container } from './components/layout';
-import { TimeshareDonutChart, MonthlyTrendBarChart } from './components/stats';
+import { StatsPanel } from './components/stats';
 import { COLOR_OPTIONS } from './components/shared/colorOptions';
 import { WizardContainer, PatternPicker, ParentSetup, HolidaySelector } from './components/wizard';
 import { WizardProvider, useWizard } from './context';
 import { getPatternByType } from './data/patterns';
-import type { PatternType, MonthlyBreakdown } from './types';
+import type { PatternType, MonthlyBreakdown, TimeshareStats } from './types';
 import type { SplitType } from './data/patterns';
 import type { ParentSetupData, HolidaySelection } from './components/wizard';
 
@@ -34,6 +34,12 @@ const mockMonthlyData: MonthlyBreakdown[] = [
   { month: 'Nov', parentADays: 15, parentBDays: 15 },
   { month: 'Dec', parentADays: 16, parentBDays: 15 },
 ];
+
+/** Mock stats for stats display (182 + 183 = 365 days) */
+const mockStats: TimeshareStats = {
+  parentA: { days: 182, percentage: 50 },
+  parentB: { days: 183, percentage: 50 },
+};
 
 /**
  * Wizard modal overlay component.
@@ -263,62 +269,22 @@ function AppContent() {
             </div>
           </div>
 
-          {/* Stats panel placeholder - takes 1/3 on desktop */}
-          <div className="sticky top-6 overflow-hidden rounded-2xl bg-white shadow-xl lg:col-span-1">
-            <div className="border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white px-6 py-4">
-              <h3 className="text-lg font-bold text-gray-900">Statistics</h3>
-              <p className="text-sm text-gray-500">Custody time breakdown</p>
-            </div>
-            <div className="p-6">
-              {/* Timeshare Donut Chart */}
-              <TimeshareDonutChart
-                parentAName={wizardState.parentSetup.parentAName || 'Parent A'}
-                parentAPercent={50}
-                parentAColor={COLOR_OPTIONS.find(opt => opt.value === wizardState.parentSetup.parentAColor)?.preview || '#3b82f6'}
-                parentBName={wizardState.parentSetup.parentBName || 'Parent B'}
-                parentBPercent={50}
-                parentBColor={COLOR_OPTIONS.find(opt => opt.value === wizardState.parentSetup.parentBColor)?.preview || '#ec4899'}
-              />
-
-              {/* Placeholder stats */}
-              <div className="mt-6 space-y-4">
-                <div className="rounded-xl bg-blue-50 p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="h-3 w-3 rounded-full bg-blue-500" />
-                      <span className="font-medium text-gray-700">{wizardState.parentSetup.parentAName || 'Parent A'}</span>
-                    </div>
-                    <span className="text-2xl font-bold text-blue-600">50%</span>
-                  </div>
-                  <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-blue-100">
-                    <div className="h-full w-1/2 rounded-full bg-blue-500" />
-                  </div>
-                </div>
-                <div className="rounded-xl bg-pink-50 p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="h-3 w-3 rounded-full bg-pink-500" />
-                      <span className="font-medium text-gray-700">{wizardState.parentSetup.parentBName || 'Parent B'}</span>
-                    </div>
-                    <span className="text-2xl font-bold text-pink-600">50%</span>
-                  </div>
-                  <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-pink-100">
-                    <div className="h-full w-1/2 rounded-full bg-pink-500" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Monthly Trend Bar Chart */}
-              <div className="mt-6">
-                <MonthlyTrendBarChart
-                  data={mockMonthlyData}
-                  parentAName={wizardState.parentSetup.parentAName || 'Parent A'}
-                  parentAColor={COLOR_OPTIONS.find(opt => opt.value === wizardState.parentSetup.parentAColor)?.preview || '#3b82f6'}
-                  parentBName={wizardState.parentSetup.parentBName || 'Parent B'}
-                  parentBColor={COLOR_OPTIONS.find(opt => opt.value === wizardState.parentSetup.parentBColor)?.preview || '#ec4899'}
-                />
-              </div>
-            </div>
+          {/* Stats panel - takes 1/3 on desktop */}
+          <div className="sticky top-6 lg:col-span-1">
+            <StatsPanel
+              stats={mockStats}
+              parentA={{
+                name: wizardState.parentSetup.parentAName || 'Parent A',
+                colorClass: wizardState.parentSetup.parentAColor || 'bg-blue-500',
+              }}
+              parentB={{
+                name: wizardState.parentSetup.parentBName || 'Parent B',
+                colorClass: wizardState.parentSetup.parentBColor || 'bg-pink-500',
+              }}
+              monthlyData={mockMonthlyData}
+              parentAColor={COLOR_OPTIONS.find(opt => opt.value === wizardState.parentSetup.parentAColor)?.preview || '#3b82f6'}
+              parentBColor={COLOR_OPTIONS.find(opt => opt.value === wizardState.parentSetup.parentBColor)?.preview || '#ec4899'}
+            />
           </div>
         </div>
       </Container>
