@@ -563,3 +563,207 @@ describe('calculateYearlyStats', () => {
     expect(totalFebDays).toBe(29); // Leap year has 29 days in February
   });
 });
+
+// Issue #46 - Comprehensive special pattern tests
+describe('same-weekends-monthly pattern (Issue #46)', () => {
+  const config: AppConfig = {
+    startDate: '2025-01-01',
+    selectedPattern: 'same-weekends-monthly',
+    startingParent: 'parentA',
+    exchangeTime: '18:00',
+  };
+
+  test('1st Saturday of month goes to Parent B', () => {
+    // January 2025: 1st Saturday is Jan 4
+    expect(getOwnerForDate('2025-01-04', config)).toBe('parentB');
+    // February 2025: 1st Saturday is Feb 1
+    expect(getOwnerForDate('2025-02-01', config)).toBe('parentB');
+    // March 2025: 1st Saturday is Mar 1
+    expect(getOwnerForDate('2025-03-01', config)).toBe('parentB');
+  });
+
+  test('1st Sunday of month goes to Parent B', () => {
+    // January 2025: 1st Sunday is Jan 5
+    expect(getOwnerForDate('2025-01-05', config)).toBe('parentB');
+    // February 2025: 1st Sunday is Feb 2
+    expect(getOwnerForDate('2025-02-02', config)).toBe('parentB');
+  });
+
+  test('2nd weekend goes to Parent A', () => {
+    // January 2025: 2nd Saturday is Jan 11, 2nd Sunday is Jan 12
+    expect(getOwnerForDate('2025-01-11', config)).toBe('parentA');
+    expect(getOwnerForDate('2025-01-12', config)).toBe('parentA');
+  });
+
+  test('3rd weekend goes to Parent B', () => {
+    // January 2025: 3rd Saturday is Jan 18, 3rd Sunday is Jan 19
+    expect(getOwnerForDate('2025-01-18', config)).toBe('parentB');
+    expect(getOwnerForDate('2025-01-19', config)).toBe('parentB');
+  });
+
+  test('4th weekend goes to Parent A', () => {
+    // January 2025: 4th Saturday is Jan 25, 4th Sunday is Jan 26
+    expect(getOwnerForDate('2025-01-25', config)).toBe('parentA');
+    expect(getOwnerForDate('2025-01-26', config)).toBe('parentA');
+  });
+
+  test('5th weekend (when exists) goes to Parent B', () => {
+    // March 2025 has 5 Saturdays: Mar 1, 8, 15, 22, 29
+    // 5th Saturday is Mar 29, 5th Sunday is Mar 30
+    expect(getOwnerForDate('2025-03-29', config)).toBe('parentB');
+    expect(getOwnerForDate('2025-03-30', config)).toBe('parentB');
+    
+    // August 2025 has 5 Saturdays: Aug 2, 9, 16, 23, 30
+    // 5th Saturday is Aug 30, 5th Sunday is Aug 31
+    expect(getOwnerForDate('2025-08-30', config)).toBe('parentB');
+    expect(getOwnerForDate('2025-08-31', config)).toBe('parentB');
+  });
+
+  test('weekdays always go to Parent A', () => {
+    // Test various weekdays throughout the year
+    expect(getOwnerForDate('2025-01-06', config)).toBe('parentA'); // Monday
+    expect(getOwnerForDate('2025-01-07', config)).toBe('parentA'); // Tuesday
+    expect(getOwnerForDate('2025-01-08', config)).toBe('parentA'); // Wednesday
+    expect(getOwnerForDate('2025-01-09', config)).toBe('parentA'); // Thursday
+    expect(getOwnerForDate('2025-01-10', config)).toBe('parentA'); // Friday
+    expect(getOwnerForDate('2025-06-02', config)).toBe('parentA'); // Monday in June
+    expect(getOwnerForDate('2025-12-24', config)).toBe('parentA'); // Wednesday in December
+  });
+
+  test('yearly stats show approximately 80/20 split', () => {
+    const stats = calculateYearlyStats(2025, config);
+    const total = stats.parentA.days + stats.parentB.days;
+    const percentageA = (stats.parentA.days / total) * 100;
+    
+    // Parent A gets weekdays + 2nd/4th weekends
+    // This should be roughly 78-82% for Parent A
+    expect(percentageA).toBeGreaterThan(75);
+    expect(percentageA).toBeLessThan(85);
+  });
+});
+
+describe('all-to-one pattern (Issue #46)', () => {
+  const config: AppConfig = {
+    startDate: '2025-01-01',
+    selectedPattern: 'all-to-one',
+    startingParent: 'parentA',
+    exchangeTime: '18:00',
+  };
+
+  test('all days go to starting parent', () => {
+    // Test various dates throughout the year
+    expect(getOwnerForDate('2025-01-01', config)).toBe('parentA');
+    expect(getOwnerForDate('2025-06-15', config)).toBe('parentA');
+    expect(getOwnerForDate('2025-12-31', config)).toBe('parentA');
+    
+    // Even weekends go to Parent A
+    expect(getOwnerForDate('2025-01-04', config)).toBe('parentA'); // Saturday
+    expect(getOwnerForDate('2025-01-05', config)).toBe('parentA'); // Sunday
+  });
+
+  test('respects startingParent parameter', () => {
+    const configB: AppConfig = { ...config, startingParent: 'parentB' };
+    expect(getOwnerForDate('2025-01-01', configB)).toBe('parentB');
+    expect(getOwnerForDate('2025-06-15', configB)).toBe('parentB');
+    expect(getOwnerForDate('2025-12-31', configB)).toBe('parentB');
+  });
+
+  test('yearly stats show 100/0 split', () => {
+    const stats = calculateYearlyStats(2025, config);
+    expect(stats.parentA.days).toBe(365);
+    expect(stats.parentA.percentage).toBe(100);
+    expect(stats.parentB.days).toBe(0);
+    expect(stats.parentB.percentage).toBe(0);
+  });
+
+  test('works in leap year', () => {
+    const leapConfig: AppConfig = { ...config, startDate: '2024-01-01' };
+    const stats = calculateYearlyStats(2024, leapConfig);
+    expect(stats.parentA.days).toBe(366);
+    expect(stats.parentB.days).toBe(0);
+  });
+});
+
+describe('custom pattern (Issue #46)', () => {
+  const config: AppConfig = {
+    startDate: '2025-01-01',
+    selectedPattern: 'custom',
+    startingParent: 'parentA',
+    exchangeTime: '18:00',
+  };
+
+  test('returns starting parent when custom pattern not defined', () => {
+    // Custom patterns without a defined cycle default to starting parent
+    expect(getOwnerForDate('2025-01-01', config)).toBe('parentA');
+    expect(getOwnerForDate('2025-06-15', config)).toBe('parentA');
+  });
+});
+
+describe('all standard patterns (Issue #46)', () => {
+  const baseConfig: AppConfig = {
+    startDate: '2025-01-01',
+    startingParent: 'parentA',
+    exchangeTime: '18:00',
+    selectedPattern: 'alt-weeks',
+  };
+
+  describe('50/50 patterns', () => {
+    test('alt-weeks gives ~50/50 split', () => {
+      const stats = calculateYearlyStats(2025, { ...baseConfig, selectedPattern: 'alt-weeks' });
+      expect(stats.parentA.percentage).toBeGreaterThan(49);
+      expect(stats.parentA.percentage).toBeLessThan(51);
+    });
+
+    test('2-2-3 gives ~50/50 split', () => {
+      const stats = calculateYearlyStats(2025, { ...baseConfig, selectedPattern: '2-2-3' });
+      expect(stats.parentA.percentage).toBeGreaterThan(49);
+      expect(stats.parentA.percentage).toBeLessThan(51);
+    });
+
+    test('2-2-5-5 gives ~50/50 split', () => {
+      const stats = calculateYearlyStats(2025, { ...baseConfig, selectedPattern: '2-2-5-5' });
+      expect(stats.parentA.percentage).toBeGreaterThan(49);
+      expect(stats.parentA.percentage).toBeLessThan(51);
+    });
+
+    test('3-4-4-3 gives ~50/50 split', () => {
+      const stats = calculateYearlyStats(2025, { ...baseConfig, selectedPattern: '3-4-4-3' });
+      expect(stats.parentA.percentage).toBeGreaterThan(49);
+      expect(stats.parentA.percentage).toBeLessThan(51);
+    });
+  });
+
+  describe('60/40 patterns', () => {
+    test('every-weekend gives ~71/29 split (weekdays to A, weekends to B)', () => {
+      const stats = calculateYearlyStats(2025, { ...baseConfig, selectedPattern: 'every-weekend' });
+      // 5 weekdays to A, 2 weekend days to B = ~71/29
+      expect(stats.parentA.percentage).toBeGreaterThan(68);
+      expect(stats.parentA.percentage).toBeLessThan(75);
+    });
+  });
+
+  describe('80/20 patterns', () => {
+    test('every-other-weekend gives ~85/15 split', () => {
+      const stats = calculateYearlyStats(2025, { ...baseConfig, selectedPattern: 'every-other-weekend' });
+      // 12 days to A, 2 days to B per 14-day cycle
+      expect(stats.parentA.percentage).toBeGreaterThan(82);
+      expect(stats.parentA.percentage).toBeLessThan(90);
+    });
+
+    test('same-weekends-monthly gives ~85/15 split', () => {
+      const stats = calculateYearlyStats(2025, { ...baseConfig, selectedPattern: 'same-weekends-monthly' });
+      // Weekdays to A, 1st/3rd/5th weekends to B (about 26 weekend days per year to B)
+      // This is closer to 85/15 since only 1st/3rd/5th weekends go to B
+      expect(stats.parentA.percentage).toBeGreaterThan(82);
+      expect(stats.parentA.percentage).toBeLessThan(88);
+    });
+  });
+
+  describe('100/0 patterns', () => {
+    test('all-to-one gives 100/0 split', () => {
+      const stats = calculateYearlyStats(2025, { ...baseConfig, selectedPattern: 'all-to-one' });
+      expect(stats.parentA.percentage).toBe(100);
+      expect(stats.parentB.percentage).toBe(0);
+    });
+  });
+});
