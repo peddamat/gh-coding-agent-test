@@ -6,9 +6,9 @@ import { Header, Container } from './components/layout';
 import { StatsPanel } from './components/stats';
 import { COLOR_OPTIONS } from './components/shared/colorOptions';
 import { WizardContainer, PatternPicker, ParentSetup, HolidaySelector } from './components/wizard';
-import { WizardProvider, useWizard } from './context';
+import { WizardProvider, useWizard, AppStateProvider, useAppState } from './context';
 import { getPatternByType } from './data/patterns';
-import { useCustodyEngine, formatDateString } from './hooks';
+import { useCustodyEngine } from './hooks';
 import type { PatternType, AppConfig } from './types';
 import type { SplitType } from './data/patterns';
 import type { ParentSetupData, HolidaySelection } from './components/wizard';
@@ -19,15 +19,6 @@ const WIZARD_STEPS = [
   { title: 'Parent Setup', description: 'Configure parent information' },
   { title: 'Holiday Settings', description: 'Set holiday custody rules' },
 ];
-
-/**
- * Get today's date in YYYY-MM-DD format.
- * Uses the shared formatDateString utility from hooks.
- */
-function getTodayDateString(): string {
-  const today = new Date();
-  return formatDateString(today.getFullYear(), today.getMonth(), today.getDate());
-}
 
 /**
  * Wizard modal overlay component.
@@ -151,20 +142,31 @@ function WizardModal({
 
 /**
  * Main application content component.
- * Uses WizardContext for wizard state management.
+ * Uses WizardContext for wizard state management and AppStateContext for persistence.
  */
 function AppContent() {
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
-  const [showWizard, setShowWizard] = useState(true);
-  const { state: wizardState, toAppState, reset } = useWizard();
+  const { toAppState, reset } = useWizard();
+  const { state: appState, dispatch: dispatchAppState, isLoaded } = useAppState();
 
-  // Build AppConfig from wizard state
-  const appConfig: AppConfig = useMemo(() => ({
-    startDate: wizardState.parentSetup.startDate || getTodayDateString(),
-    selectedPattern: wizardState.pattern || 'alt-weeks',
-    startingParent: wizardState.parentSetup.startingParent || 'parentA',
-    exchangeTime: '18:00', // Default exchange time (not yet configurable in wizard)
-  }), [wizardState.pattern, wizardState.parentSetup.startDate, wizardState.parentSetup.startingParent]);
+  // Determine if wizard should be shown:
+  // - Show on first load if AppState is still at default (no customization saved)
+  // - Don't show if user has already configured their schedule
+  const [showWizard, setShowWizard] = useState(false);
+  
+  // Check if AppState has been customized (not default parent names)
+  useEffect(() => {
+    if (isLoaded) {
+      // If parent names are still defaults, show wizard
+      const hasDefaultParents = 
+        appState.parents.parentA.name === 'Parent A' && 
+        appState.parents.parentB.name === 'Parent B';
+      setShowWizard(hasDefaultParents);
+    }
+  }, [isLoaded, appState.parents.parentA.name, appState.parents.parentB.name]);
+
+  // Build AppConfig from AppState (persisted state takes priority)
+  const appConfig: AppConfig = useMemo(() => appState.config, [appState.config]);
 
   // Use the custody engine for calculations
   const { getYearlyStats } = useCustodyEngine(appConfig);
@@ -184,6 +186,13 @@ function AppContent() {
     reset();
   }, [reset]);
 
+  const handleResetClick = useCallback(() => {
+    // Reset AppState to defaults and show wizard
+    dispatchAppState({ type: 'RESET' });
+    reset();
+    setShowWizard(true);
+  }, [dispatchAppState, reset]);
+
   const handlePreviousMonth = () => {
     setCurrentMonth((prev) => {
       const newDate = new Date(prev);
@@ -202,8 +211,13 @@ function AppContent() {
 
   const handleWizardFinish = () => {
     setShowWizard(false);
-    const appState = toAppState();
-    console.log('Wizard finished with AppState:', appState);
+    const newAppState = toAppState();
+    
+    // Dispatch to AppState for persistence
+    dispatchAppState({ type: 'SET_CONFIG', payload: newAppState.config });
+    dispatchAppState({ type: 'SET_PARENTS', payload: newAppState.parents });
+    
+    console.log('Wizard finished with AppState:', newAppState);
   };
 
   const handleWizardClose = () => {
@@ -211,12 +225,22 @@ function AppContent() {
     setShowWizard(false);
   };
 
+  // Show loading state until AppState is loaded from localStorage
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header at top */}
       <Header
         onExportClick={handleExportClick}
         onNewScheduleClick={handleNewScheduleClick}
+        onResetClick={handleResetClick}
       />
 
       {/* Wizard modal overlay */}
@@ -228,26 +252,24 @@ function AppContent() {
 
       {/* Main content area */}
       <Container>
-        {/* Current schedule info */}
-        {wizardState.pattern && wizardState.split && !showWizard && (
+        {/* Current schedule info - using AppState */}
+        {!showWizard && (
           <section aria-labelledby="schedule-info-heading" className="mb-6 rounded-xl bg-white p-4 shadow-md">
             <h2 id="schedule-info-heading" className="sr-only">Current Schedule Information</h2>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <span className="rounded-lg bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700">
-                  {wizardState.split}
+                  {getPatternByType(appState.config.selectedPattern)?.split || '50/50'}
                 </span>
                 <span className="font-medium text-gray-700">
-                  {getPatternByType(wizardState.pattern)?.label || 'Unknown Pattern'}
+                  {getPatternByType(appState.config.selectedPattern)?.label || 'Unknown Pattern'}
                 </span>
               </div>
-              {wizardState.parentSetup.parentAName && wizardState.parentSetup.parentBName && (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <span>{wizardState.parentSetup.parentAName}</span>
-                  <span aria-hidden="true">•</span>
-                  <span>{wizardState.parentSetup.parentBName}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <span>{appState.parents.parentA.name}</span>
+                <span aria-hidden="true">•</span>
+                <span>{appState.parents.parentB.name}</span>
+              </div>
             </div>
           </section>
         )}
@@ -266,22 +288,22 @@ function AppContent() {
                 />
               </div>
 
-              {/* Calendar Grid fills main area */}
+              {/* Calendar Grid fills main area - reads from AppState */}
               <div className="p-6">
                 <CalendarGrid
                   currentMonth={currentMonth}
                   hideTitle
                   appConfig={appConfig}
-                  parentAColor={wizardState.parentSetup.parentAColor || 'bg-blue-500'}
-                  parentBColor={wizardState.parentSetup.parentBColor || 'bg-pink-500'}
-                  parentAName={wizardState.parentSetup.parentAName || 'Parent A'}
-                  parentBName={wizardState.parentSetup.parentBName || 'Parent B'}
+                  parentAColor={appState.parents.parentA.colorClass}
+                  parentBColor={appState.parents.parentB.colorClass}
+                  parentAName={appState.parents.parentA.name}
+                  parentBName={appState.parents.parentB.name}
                 />
               </div>
             </div>
           </div>
 
-          {/* Stats panel - takes 1/3 on desktop */}
+          {/* Stats panel - takes 1/3 on desktop - reads from AppState */}
           <div className="sticky top-6 lg:col-span-1">
             <StatsPanel
               stats={{
@@ -289,16 +311,16 @@ function AppContent() {
                 parentB: yearlyStats.parentB,
               }}
               parentA={{
-                name: wizardState.parentSetup.parentAName || 'Parent A',
-                colorClass: wizardState.parentSetup.parentAColor || 'bg-blue-500',
+                name: appState.parents.parentA.name,
+                colorClass: appState.parents.parentA.colorClass,
               }}
               parentB={{
-                name: wizardState.parentSetup.parentBName || 'Parent B',
-                colorClass: wizardState.parentSetup.parentBColor || 'bg-pink-500',
+                name: appState.parents.parentB.name,
+                colorClass: appState.parents.parentB.colorClass,
               }}
               monthlyData={yearlyStats.monthlyBreakdown}
-              parentAColor={COLOR_OPTIONS.find(opt => opt.value === wizardState.parentSetup.parentAColor)?.preview || '#3b82f6'}
-              parentBColor={COLOR_OPTIONS.find(opt => opt.value === wizardState.parentSetup.parentBColor)?.preview || '#ec4899'}
+              parentAColor={COLOR_OPTIONS.find(opt => opt.value === appState.parents.parentA.colorClass)?.preview || '#3b82f6'}
+              parentBColor={COLOR_OPTIONS.find(opt => opt.value === appState.parents.parentB.colorClass)?.preview || '#ec4899'}
             />
           </div>
         </div>
@@ -309,9 +331,11 @@ function AppContent() {
 
 function App() {
   return (
-    <WizardProvider>
-      <AppContent />
-    </WizardProvider>
+    <AppStateProvider>
+      <WizardProvider>
+        <AppContent />
+      </WizardProvider>
+    </AppStateProvider>
   );
 }
 

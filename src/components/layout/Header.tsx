@@ -1,13 +1,15 @@
-import { Download, Calendar, Plus } from 'lucide-react';
+import { Download, Calendar, Plus, RotateCcw } from 'lucide-react';
 
 export interface HeaderProps {
   /** Optional callback for when the export button is clicked */
   onExportClick?: () => void;
   /** Optional callback for when the "Start New Schedule" button is clicked */
   onNewScheduleClick?: () => void;
+  /** Optional callback for when the "Reset" button is clicked */
+  onResetClick?: () => void;
 }
 
-export function Header({ onExportClick, onNewScheduleClick }: HeaderProps) {
+export function Header({ onExportClick, onNewScheduleClick, onResetClick }: HeaderProps) {
   return (
     <header className="border-b border-gray-200 bg-white">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
@@ -23,6 +25,15 @@ export function Header({ onExportClick, onNewScheduleClick }: HeaderProps) {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {onResetClick && (
+            <button
+              onClick={onResetClick}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-all duration-150 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-500"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Reset
+            </button>
+          )}
           {onNewScheduleClick && (
             <button
               onClick={onNewScheduleClick}
