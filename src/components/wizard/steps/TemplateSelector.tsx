@@ -259,7 +259,7 @@ export function TemplateSelector({
               <p className="text-sm text-gray-500">
                 Default pattern: {getPatternLabel(selectedOption.template.defaultPattern)}
                 {' · '}
-                Exchange time: {selectedOption.template.defaultExchangeTime.replace(':', ':')}
+                Exchange time: {selectedOption.template.defaultExchangeTime}
               </p>
               {selectedOption.template.notes && (
                 <p className="mt-2 text-xs text-gray-500 italic">
