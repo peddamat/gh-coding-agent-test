@@ -4,10 +4,10 @@ import FocusTrap from 'focus-trap-react';
 import { CalendarGrid, MonthNavigation } from './components/calendar';
 import { Header, Container } from './components/layout';
 import { StatsPanel } from './components/stats';
-import { COLOR_OPTIONS } from './components/shared/colorOptions';
+import { COLOR_OPTIONS, DEFAULT_PARENT_A_COLOR, DEFAULT_PARENT_B_COLOR } from './components/shared/colorOptions';
 import { WizardContainer, PatternPicker, HolidaySelector } from './components/wizard';
 import { WizardProvider, useWizard, AppStateProvider, useAppState } from './context';
-import { getPatternByType } from './data/patterns';
+import { getPatternByType, getSplitPercentages } from './data/patterns';
 import { useCustodyEngine } from './hooks';
 import type { PatternType, AppConfig, HolidayUserConfig, BirthdayConfig, HolidayPresetType } from './types';
 import type { SplitPeriodConfig, SelectionPriorityConfig } from './types/holidays';
@@ -89,21 +89,7 @@ function WizardModal({
   };
 
   // Calculate base percentages for holiday impact preview
-  const basePercentages = useMemo(() => {
-    const split = state.split || '50/50';
-    switch (split) {
-      case '50/50':
-        return { parentA: 50, parentB: 50 };
-      case '60/40':
-        return { parentA: 60, parentB: 40 };
-      case '80/20':
-        return { parentA: 80, parentB: 20 };
-      case '100/0':
-        return { parentA: 100, parentB: 0 };
-      default:
-        return { parentA: 50, parentB: 50 };
-    }
-  }, [state.split]);
+  const basePercentages = useMemo(() => getSplitPercentages(state.split), [state.split]);
 
   if (!isOpen) return null;
 
@@ -166,8 +152,8 @@ function WizardModal({
                   onSummerVacationConfigChange={handleSummerVacationConfigChange}
                   parentAName={state.parentSetup.parentAName || 'Parent A'}
                   parentBName={state.parentSetup.parentBName || 'Parent B'}
-                  parentAColor={state.parentSetup.parentAColor || 'bg-blue-500'}
-                  parentBColor={state.parentSetup.parentBColor || 'bg-pink-500'}
+                  parentAColor={state.parentSetup.parentAColor || DEFAULT_PARENT_A_COLOR}
+                  parentBColor={state.parentSetup.parentBColor || DEFAULT_PARENT_B_COLOR}
                   basePercentageA={basePercentages.parentA}
                   basePercentageB={basePercentages.parentB}
                 />

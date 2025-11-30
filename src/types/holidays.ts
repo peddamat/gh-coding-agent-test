@@ -212,6 +212,10 @@ export interface HolidayState {
   birthdays: BirthdayConfig[];
   /** Selected preset (if any) */
   selectedPreset?: HolidayPresetType;
+  /** Winter break split configuration */
+  winterBreakSplit?: SplitPeriodConfig;
+  /** Summer vacation configuration */
+  summerVacationConfig?: SelectionPriorityConfig;
 }
 
 /**

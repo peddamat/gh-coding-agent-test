@@ -147,3 +147,25 @@ export function getPatternGroups(): PatternGroup[] {
 export function getPatternByType(type: PatternType): PatternDefinition | undefined {
   return PATTERNS.find((p) => p.type === type);
 }
+
+/**
+ * Map of split types to parent percentages.
+ */
+export const SPLIT_PERCENTAGES: Record<SplitType, { parentA: number; parentB: number }> = {
+  '50/50': { parentA: 50, parentB: 50 },
+  '60/40': { parentA: 60, parentB: 40 },
+  '80/20': { parentA: 80, parentB: 20 },
+  '100/0': { parentA: 100, parentB: 0 },
+  'Custom': { parentA: 50, parentB: 50 }, // Default for custom patterns
+};
+
+/**
+ * Get the percentage split for a given split type.
+ * Defaults to 50/50 if the split type is not recognized.
+ */
+export function getSplitPercentages(split: SplitType | null | undefined): { parentA: number; parentB: number } {
+  if (!split || !(split in SPLIT_PERCENTAGES)) {
+    return SPLIT_PERCENTAGES['50/50'];
+  }
+  return SPLIT_PERCENTAGES[split];
+}

@@ -3,6 +3,7 @@ import type { SplitPeriodConfig, SelectionPriorityConfig } from '../types/holida
 import type { SplitType } from '../data/patterns';
 import type { ParentSetupData, HolidaySelection } from '../components/wizard';
 import { createDefaultHolidayConfigs, createDefaultBirthdayConfigs, DEFAULT_WINTER_BREAK_SPLIT, DEFAULT_SUMMER_VACATION_CONFIG } from '../data/holidays';
+import { DEFAULT_PARENT_A_COLOR, DEFAULT_PARENT_B_COLOR } from '../components/shared/colorOptions';
 
 /**
  * Enhanced holiday state for the wizard.
@@ -147,6 +148,8 @@ export function convertWizardToAppState(wizardState: WizardState): AppState {
     holidayConfigs: enhancedHolidays.holidayConfigs,
     birthdays: enhancedHolidays.birthdays,
     selectedPreset: enhancedHolidays.selectedPreset,
+    winterBreakSplit: enhancedHolidays.winterBreakSplit,
+    summerVacationConfig: enhancedHolidays.summerVacationConfig,
   };
 
   return {
@@ -159,11 +162,11 @@ export function convertWizardToAppState(wizardState: WizardState): AppState {
     parents: {
       parentA: {
         name: parentSetup.parentAName || 'Parent A',
-        colorClass: parentSetup.parentAColor || 'bg-blue-500',
+        colorClass: parentSetup.parentAColor || DEFAULT_PARENT_A_COLOR,
       },
       parentB: {
         name: parentSetup.parentBName || 'Parent B',
-        colorClass: parentSetup.parentBColor || 'bg-pink-500',
+        colorClass: parentSetup.parentBColor || DEFAULT_PARENT_B_COLOR,
       },
     },
     holidays,
