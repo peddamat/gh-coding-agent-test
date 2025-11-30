@@ -42,3 +42,9 @@ export interface TimeshareStats {
   parentA: { days: number; percentage: number };
   parentB: { days: number; percentage: number };
 }
+
+export interface MonthlyBreakdown {
+  month: string;
+  parentADays: number;
+  parentBDays: number;
+}

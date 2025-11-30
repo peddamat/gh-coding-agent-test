@@ -3,12 +3,12 @@ import { X } from 'lucide-react';
 import FocusTrap from 'focus-trap-react';
 import { CalendarGrid, MonthNavigation } from './components/calendar';
 import { Header, Container } from './components/layout';
-import { TimeshareDonutChart } from './components/stats';
+import { TimeshareDonutChart, MonthlyTrendBarChart } from './components/stats';
 import { COLOR_OPTIONS } from './components/shared/colorOptions';
 import { WizardContainer, PatternPicker, ParentSetup, HolidaySelector } from './components/wizard';
 import { WizardProvider, useWizard } from './context';
 import { getPatternByType } from './data/patterns';
-import type { PatternType } from './types';
+import type { PatternType, MonthlyBreakdown } from './types';
 import type { SplitType } from './data/patterns';
 import type { ParentSetupData, HolidaySelection } from './components/wizard';
 
@@ -17,6 +17,22 @@ const WIZARD_STEPS = [
   { title: 'Choose Schedule', description: 'Select a custody schedule pattern' },
   { title: 'Parent Setup', description: 'Configure parent information' },
   { title: 'Holiday Settings', description: 'Set holiday custody rules' },
+];
+
+/** Mock monthly data for stats display */
+const mockMonthlyData: MonthlyBreakdown[] = [
+  { month: 'Jan', parentADays: 16, parentBDays: 15 },
+  { month: 'Feb', parentADays: 14, parentBDays: 14 },
+  { month: 'Mar', parentADays: 16, parentBDays: 15 },
+  { month: 'Apr', parentADays: 15, parentBDays: 15 },
+  { month: 'May', parentADays: 16, parentBDays: 15 },
+  { month: 'Jun', parentADays: 15, parentBDays: 15 },
+  { month: 'Jul', parentADays: 16, parentBDays: 15 },
+  { month: 'Aug', parentADays: 16, parentBDays: 15 },
+  { month: 'Sep', parentADays: 15, parentBDays: 15 },
+  { month: 'Oct', parentADays: 16, parentBDays: 15 },
+  { month: 'Nov', parentADays: 15, parentBDays: 15 },
+  { month: 'Dec', parentADays: 16, parentBDays: 15 },
 ];
 
 /**
@@ -290,6 +306,17 @@ function AppContent() {
                     <div className="h-full w-1/2 rounded-full bg-pink-500" />
                   </div>
                 </div>
+              </div>
+
+              {/* Monthly Trend Bar Chart */}
+              <div className="mt-6">
+                <MonthlyTrendBarChart
+                  data={mockMonthlyData}
+                  parentAName={wizardState.parentSetup.parentAName || 'Parent A'}
+                  parentAColor={COLOR_OPTIONS.find(opt => opt.value === wizardState.parentSetup.parentAColor)?.preview || '#3b82f6'}
+                  parentBName={wizardState.parentSetup.parentBName || 'Parent B'}
+                  parentBColor={COLOR_OPTIONS.find(opt => opt.value === wizardState.parentSetup.parentBColor)?.preview || '#ec4899'}
+                />
               </div>
             </div>
           </div>
