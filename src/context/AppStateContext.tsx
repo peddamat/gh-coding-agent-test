@@ -10,7 +10,7 @@ import {
   type Dispatch,
 } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import type { AppState, AppConfig, ParentConfig, PatternType, HolidayState } from '../types';
+import type { AppState, AppConfig, ParentConfig, PatternType, HolidayState, FamilyInfo, Child } from '../types';
 import { createDefaultHolidayConfigs, createDefaultBirthdayConfigs } from '../data/holidays';
 
 /**
@@ -29,6 +29,10 @@ export type AppStateAction =
   | { type: 'SET_HOLIDAYS'; payload: HolidayState }
   | { type: 'UPDATE_HOLIDAY_CONFIGS'; payload: HolidayState['holidayConfigs'] }
   | { type: 'UPDATE_BIRTHDAYS'; payload: HolidayState['birthdays'] }
+  | { type: 'SET_FAMILY_INFO'; payload: FamilyInfo }
+  | { type: 'ADD_CHILD'; payload: Child }
+  | { type: 'REMOVE_CHILD'; payload: string } // payload is child id
+  | { type: 'UPDATE_CHILD'; payload: Child }
   | { type: 'RESET' }
   | { type: 'LOAD_STATE'; payload: AppState };
 
@@ -52,6 +56,17 @@ function getDefaultHolidayState(): HolidayState {
 }
 
 /**
+ * Get default family info state.
+ */
+function getDefaultFamilyInfo(): FamilyInfo {
+  return {
+    children: [],
+    planStartDate: getTodayDateString(),
+    planEndDate: undefined,
+  };
+}
+
+/**
  * Default initial state for the application.
  * Used when no saved state exists in localStorage.
  */
@@ -67,6 +82,7 @@ export const initialAppState: AppState = {
     parentB: { name: 'Parent B', colorClass: 'bg-pink-500' },
   },
   holidays: getDefaultHolidayState(),
+  familyInfo: getDefaultFamilyInfo(),
 };
 
 /**
@@ -100,6 +116,36 @@ export function appStateReducer(state: AppState, action: AppStateAction): AppSta
         holidays: {
           ...(state.holidays ?? getDefaultHolidayState()),
           birthdays: action.payload,
+        },
+      };
+    case 'SET_FAMILY_INFO':
+      return { ...state, familyInfo: action.payload };
+    case 'ADD_CHILD':
+      return {
+        ...state,
+        familyInfo: {
+          ...state.familyInfo,
+          children: [...state.familyInfo.children, action.payload],
+        },
+      };
+    case 'REMOVE_CHILD':
+      return {
+        ...state,
+        familyInfo: {
+          ...state.familyInfo,
+          children: state.familyInfo.children.filter(
+            (child) => child.id !== action.payload
+          ),
+        },
+      };
+    case 'UPDATE_CHILD':
+      return {
+        ...state,
+        familyInfo: {
+          ...state.familyInfo,
+          children: state.familyInfo.children.map((child) =>
+            child.id === action.payload.id ? action.payload : child
+          ),
         },
       };
     case 'RESET':

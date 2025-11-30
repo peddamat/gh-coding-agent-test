@@ -3,6 +3,39 @@ import type {
 } from './holidays';
 
 export type ParentId = 'parentA' | 'parentB';
+
+// ============================================================================
+// Child & Family Types
+// ============================================================================
+
+/**
+ * Represents a child in the custody arrangement.
+ * Used for birthday automation and plan expiration calculation.
+ */
+export interface Child {
+  /** Unique identifier for the child */
+  id: string;
+  /** Child's name */
+  name: string;
+  /** Child's birthdate in ISO format (YYYY-MM-DD) */
+  birthdate: string;
+  /** Age at which custody arrangement ends (default 18, can be 19 in some jurisdictions) */
+  custodyEndAge: number;
+}
+
+/**
+ * Family information including children and plan dates.
+ * Plan expiration is typically calculated based on when the youngest child
+ * reaches the custody end age.
+ */
+export interface FamilyInfo {
+  /** List of children in the custody arrangement */
+  children: Child[];
+  /** When the custody plan starts (YYYY-MM-DD) */
+  planStartDate: string;
+  /** When the custody plan ends - auto-calculated or manual override (YYYY-MM-DD) */
+  planEndDate?: string;
+}
 export type PatternType =
   | 'alt-weeks'              // 50/50 - Alternating weeks (7-7)
   | '2-2-3'                  // 50/50 - 2-2-3 rotation
@@ -33,6 +66,8 @@ export interface AppState {
     parentB: ParentConfig;
   };
   holidays?: HolidayState;
+  /** Family information including children and plan dates */
+  familyInfo: FamilyInfo;
 }
 
 export interface CalendarDay {

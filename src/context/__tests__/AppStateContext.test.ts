@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { appStateReducer, initialAppState } from '../AppStateContext';
 import type { AppStateAction } from '../AppStateContext';
-import type { AppState, AppConfig, ParentConfig, PatternType } from '../../types';
+import type { AppState, AppConfig, ParentConfig, PatternType, Child, FamilyInfo } from '../../types';
 
 describe('AppStateContext', () => {
   describe('initialAppState', () => {
@@ -19,6 +19,13 @@ describe('AppStateContext', () => {
       expect(initialAppState.parents.parentA.colorClass).toBe('bg-blue-500');
       expect(initialAppState.parents.parentB.name).toBe('Parent B');
       expect(initialAppState.parents.parentB.colorClass).toBe('bg-pink-500');
+    });
+
+    test('has valid familyInfo structure', () => {
+      expect(initialAppState.familyInfo).toBeDefined();
+      expect(initialAppState.familyInfo.children).toEqual([]);
+      expect(initialAppState.familyInfo.planStartDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(initialAppState.familyInfo.planEndDate).toBeUndefined();
     });
   });
 
@@ -162,6 +169,10 @@ describe('AppStateContext', () => {
             parentA: { name: 'Custom A', colorClass: 'bg-red-500' },
             parentB: { name: 'Custom B', colorClass: 'bg-yellow-500' },
           },
+          familyInfo: {
+            children: [],
+            planStartDate: '2025-12-25',
+          },
         };
 
         const action: AppStateAction = { type: 'RESET' };
@@ -190,12 +201,206 @@ describe('AppStateContext', () => {
             parentA: { name: 'Loaded A', colorClass: 'bg-indigo-500' },
             parentB: { name: 'Loaded B', colorClass: 'bg-teal-500' },
           },
+          familyInfo: {
+            children: [],
+            planStartDate: '2024-07-04',
+          },
         };
 
         const action: AppStateAction = { type: 'LOAD_STATE', payload: loadedState };
         const newState = appStateReducer(initialAppState, action);
 
         expect(newState).toEqual(loadedState);
+      });
+    });
+
+    describe('SET_FAMILY_INFO action', () => {
+      test('updates familyInfo correctly', () => {
+        const newFamilyInfo: FamilyInfo = {
+          children: [
+            { id: '1', name: 'Alice', birthdate: '2015-03-15', custodyEndAge: 18 },
+          ],
+          planStartDate: '2025-01-01',
+          planEndDate: '2033-03-15',
+        };
+
+        const action: AppStateAction = { type: 'SET_FAMILY_INFO', payload: newFamilyInfo };
+        const newState = appStateReducer(initialAppState, action);
+
+        expect(newState.familyInfo).toEqual(newFamilyInfo);
+        // Config should remain unchanged
+        expect(newState.config).toEqual(initialAppState.config);
+      });
+    });
+
+    describe('ADD_CHILD action', () => {
+      test('adds a child to familyInfo.children', () => {
+        const newChild: Child = {
+          id: '1',
+          name: 'Bob',
+          birthdate: '2018-07-20',
+          custodyEndAge: 18,
+        };
+
+        const action: AppStateAction = { type: 'ADD_CHILD', payload: newChild };
+        const newState = appStateReducer(initialAppState, action);
+
+        expect(newState.familyInfo.children).toHaveLength(1);
+        expect(newState.familyInfo.children[0]).toEqual(newChild);
+      });
+
+      test('preserves existing children when adding new one', () => {
+        const existingChild: Child = {
+          id: '1',
+          name: 'Alice',
+          birthdate: '2015-03-15',
+          custodyEndAge: 18,
+        };
+
+        const stateWithChild: AppState = {
+          ...initialAppState,
+          familyInfo: {
+            ...initialAppState.familyInfo,
+            children: [existingChild],
+          },
+        };
+
+        const newChild: Child = {
+          id: '2',
+          name: 'Bob',
+          birthdate: '2018-07-20',
+          custodyEndAge: 18,
+        };
+
+        const action: AppStateAction = { type: 'ADD_CHILD', payload: newChild };
+        const newState = appStateReducer(stateWithChild, action);
+
+        expect(newState.familyInfo.children).toHaveLength(2);
+        expect(newState.familyInfo.children[0]).toEqual(existingChild);
+        expect(newState.familyInfo.children[1]).toEqual(newChild);
+      });
+    });
+
+    describe('REMOVE_CHILD action', () => {
+      test('removes child by id', () => {
+        const child1: Child = {
+          id: '1',
+          name: 'Alice',
+          birthdate: '2015-03-15',
+          custodyEndAge: 18,
+        };
+        const child2: Child = {
+          id: '2',
+          name: 'Bob',
+          birthdate: '2018-07-20',
+          custodyEndAge: 18,
+        };
+
+        const stateWithChildren: AppState = {
+          ...initialAppState,
+          familyInfo: {
+            ...initialAppState.familyInfo,
+            children: [child1, child2],
+          },
+        };
+
+        const action: AppStateAction = { type: 'REMOVE_CHILD', payload: '1' };
+        const newState = appStateReducer(stateWithChildren, action);
+
+        expect(newState.familyInfo.children).toHaveLength(1);
+        expect(newState.familyInfo.children[0]).toEqual(child2);
+      });
+
+      test('does nothing if child id not found', () => {
+        const child: Child = {
+          id: '1',
+          name: 'Alice',
+          birthdate: '2015-03-15',
+          custodyEndAge: 18,
+        };
+
+        const stateWithChild: AppState = {
+          ...initialAppState,
+          familyInfo: {
+            ...initialAppState.familyInfo,
+            children: [child],
+          },
+        };
+
+        const action: AppStateAction = { type: 'REMOVE_CHILD', payload: 'non-existent' };
+        const newState = appStateReducer(stateWithChild, action);
+
+        expect(newState.familyInfo.children).toHaveLength(1);
+        expect(newState.familyInfo.children[0]).toEqual(child);
+      });
+    });
+
+    describe('UPDATE_CHILD action', () => {
+      test('updates existing child by id', () => {
+        const child: Child = {
+          id: '1',
+          name: 'Alice',
+          birthdate: '2015-03-15',
+          custodyEndAge: 18,
+        };
+
+        const stateWithChild: AppState = {
+          ...initialAppState,
+          familyInfo: {
+            ...initialAppState.familyInfo,
+            children: [child],
+          },
+        };
+
+        const updatedChild: Child = {
+          id: '1',
+          name: 'Alice Updated',
+          birthdate: '2015-03-15',
+          custodyEndAge: 19,
+        };
+
+        const action: AppStateAction = { type: 'UPDATE_CHILD', payload: updatedChild };
+        const newState = appStateReducer(stateWithChild, action);
+
+        expect(newState.familyInfo.children).toHaveLength(1);
+        expect(newState.familyInfo.children[0]).toEqual(updatedChild);
+      });
+
+      test('does not modify other children', () => {
+        const child1: Child = {
+          id: '1',
+          name: 'Alice',
+          birthdate: '2015-03-15',
+          custodyEndAge: 18,
+        };
+        const child2: Child = {
+          id: '2',
+          name: 'Bob',
+          birthdate: '2018-07-20',
+          custodyEndAge: 18,
+        };
+
+        const stateWithChildren: AppState = {
+          ...initialAppState,
+          familyInfo: {
+            ...initialAppState.familyInfo,
+            children: [child1, child2],
+          },
+        };
+
+        const updatedChild1: Child = {
+          id: '1',
+          name: 'Alice Updated',
+          birthdate: '2015-03-15',
+          custodyEndAge: 19,
+        };
+
+        const action: AppStateAction = { type: 'UPDATE_CHILD', payload: updatedChild1 };
+        const newState = appStateReducer(stateWithChildren, action);
+
+        expect(newState.familyInfo.children).toHaveLength(2);
+        expect(newState.familyInfo.children[0]).toEqual(updatedChild1);
+        expect(newState.familyInfo.children[1]).toEqual(child2);
       });
     });
 
@@ -252,6 +457,10 @@ describe('AppStateContext', () => {
         parents: {
           parentA: { name: 'John', colorClass: 'bg-blue-500' },
           parentB: { name: 'Sarah', colorClass: 'bg-pink-500' },
+        },
+        familyInfo: {
+          children: [],
+          planStartDate: '2025-05-15',
         },
       };
 

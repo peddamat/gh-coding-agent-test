@@ -217,6 +217,10 @@ export function convertWizardToAppState(wizardState: WizardState): AppState {
       },
     },
     holidays,
+    familyInfo: {
+      children: [],
+      planStartDate: startDate,
+    },
   };
 }
 
