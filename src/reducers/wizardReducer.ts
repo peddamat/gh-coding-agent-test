@@ -1,9 +1,10 @@
-import type { PatternType, ParentId, AppState, HolidayState, HolidayUserConfig, BirthdayConfig, HolidayPresetType } from '../types';
+import type { PatternType, ParentId, AppState, HolidayState, HolidayUserConfig, BirthdayConfig, HolidayPresetType, CourtTemplate } from '../types';
 import type { SplitPeriodConfig, SelectionPriorityConfig } from '../types/holidays';
 import type { SplitType } from '../data/patterns';
 import type { ParentSetupData, HolidaySelection } from '../components/wizard';
 import { createDefaultHolidayConfigs, createDefaultBirthdayConfigs, DEFAULT_WINTER_BREAK_SPLIT, DEFAULT_SUMMER_VACATION_CONFIG } from '../data/holidays';
 import { DEFAULT_PARENT_A_COLOR, DEFAULT_PARENT_B_COLOR } from '../components/shared/colorOptions';
+import { getPatternByType } from '../data/patterns';
 
 /**
  * Enhanced holiday state for the wizard.
@@ -27,7 +28,11 @@ export interface EnhancedHolidayState {
  * This state is separate from AppState and is converted to AppState when wizard finishes.
  */
 export interface WizardState {
-  /** Selected custody pattern (Step 1) */
+  /** Selected court template (Step 1: Quick Start), null if "Build Your Own" selected */
+  selectedTemplate: CourtTemplate | null;
+  /** Whether user chose "Build Your Own" instead of a template */
+  isBuildYourOwn: boolean;
+  /** Selected custody pattern (Step 2) */
   pattern: PatternType | null;
   /** Pattern's custody split percentage (automatically set when pattern is selected) */
   split: SplitType | null;
@@ -43,6 +48,8 @@ export interface WizardState {
  * Action types for wizard state management.
  */
 export type WizardAction =
+  | { type: 'SET_TEMPLATE'; payload: CourtTemplate }
+  | { type: 'SET_BUILD_YOUR_OWN' }
   | { type: 'SET_PATTERN'; payload: { pattern: PatternType; split: SplitType } }
   | { type: 'SET_PARENTS'; payload: ParentSetupData }
   | { type: 'SET_HOLIDAYS'; payload: HolidaySelection[] }
@@ -59,6 +66,44 @@ export type WizardAction =
  */
 export function wizardReducer(state: WizardState, action: WizardAction): WizardState {
   switch (action.type) {
+    case 'SET_TEMPLATE': {
+      // Apply template: set pattern, exchange time, and holidays from template
+      const template = action.payload;
+      const patternDef = getPatternByType(template.defaultPattern);
+      const split: SplitType = patternDef?.split ?? '50/50';
+      
+      // Convert template holiday assignments to HolidayUserConfig format
+      const holidayConfigs: HolidayUserConfig[] = createDefaultHolidayConfigs().map((config) => {
+        const templateAssignment = template.holidays.find(h => h.holidayId === config.holidayId);
+        if (templateAssignment) {
+          return {
+            ...config,
+            enabled: templateAssignment.enabled ?? true,
+            assignment: templateAssignment.assignment,
+          };
+        }
+        return config;
+      });
+      
+      return {
+        ...state,
+        selectedTemplate: template,
+        isBuildYourOwn: false,
+        pattern: template.defaultPattern,
+        split,
+        enhancedHolidays: {
+          ...state.enhancedHolidays,
+          holidayConfigs,
+        },
+      };
+    }
+    case 'SET_BUILD_YOUR_OWN':
+      return {
+        ...state,
+        selectedTemplate: null,
+        isBuildYourOwn: true,
+        // Keep pattern and holidays at defaults for manual configuration
+      };
     case 'SET_PATTERN':
       return {
         ...state,
@@ -133,7 +178,7 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
  * @returns AppState object ready for the main application
  */
 export function convertWizardToAppState(wizardState: WizardState): AppState {
-  const { pattern, parentSetup, enhancedHolidays } = wizardState;
+  const { pattern, parentSetup, enhancedHolidays, selectedTemplate } = wizardState;
 
   // Default values for required fields
   const selectedPattern: PatternType = pattern || 'alt-weeks';
@@ -141,7 +186,9 @@ export function convertWizardToAppState(wizardState: WizardState): AppState {
   
   // Default to today's date if not provided
   const startDate = parentSetup.startDate || new Date().toISOString().split('T')[0];
-  const exchangeTime = '15:00'; // Default exchange time
+  
+  // Use template exchange time if available, otherwise default
+  const exchangeTime = selectedTemplate?.defaultExchangeTime || '15:00';
 
   // Convert enhanced holidays to HolidayState
   const holidays: HolidayState = {

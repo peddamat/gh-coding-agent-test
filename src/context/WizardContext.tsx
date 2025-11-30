@@ -23,6 +23,8 @@ export interface WizardContextValue {
  */
 function createInitialWizardState(): WizardState {
   return {
+    selectedTemplate: null,
+    isBuildYourOwn: false,
     pattern: null,
     split: null,
     parentSetup: getDefaultParentSetupData(),

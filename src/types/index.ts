@@ -58,5 +58,100 @@ export interface MonthlyBreakdown {
   parentBDays: number;
 }
 
+// ============================================================================
+// Court Template Types
+// ============================================================================
+
+/**
+ * Holiday assignment rule for court templates.
+ * Defines which parent gets custody during a specific holiday and how it's assigned.
+ */
+export interface HolidayAssignment {
+  /** Holiday identifier (matches HolidayDefinition.id) */
+  holidayId: string;
+  /** How custody is assigned for this holiday */
+  assignment: import('./holidays').AssignmentType;
+  /** Which parent has custody in odd years (if alternate-odd-even) */
+  oddYearParent?: ParentId;
+  /** Exchange time override for this holiday (HH:MM format) */
+  exchangeTime?: string;
+  /** Description of the timing (e.g., "6 PM Dec 31 - 6 PM Jan 1") */
+  timingDescription?: string;
+  /** Whether this holiday is enabled in the template */
+  enabled?: boolean;
+}
+
+/**
+ * Configuration for major breaks (summer, winter, spring).
+ * These are extended custody periods with special selection rules.
+ */
+export interface MajorBreakConfig {
+  /** Break identifier (e.g., 'summer-vacation', 'winter-break') */
+  breakId: string;
+  /** Display name for the break */
+  name: string;
+  /** Start month (1-12) */
+  startMonth: number;
+  /** Start day (1-31, approximate) */
+  startDay: number;
+  /** End month (1-12) */
+  endMonth: number;
+  /** End day (1-31, approximate) */
+  endDay: number;
+  /** Number of weeks each parent receives (for selection-based breaks) */
+  weeksPerParent?: number;
+  /** Deadline for making selections (e.g., "April 1") */
+  selectionDeadline?: string;
+  /** Which parent picks first in odd years */
+  firstPickOddYears?: ParentId;
+  /** Maximum consecutive weeks allowed */
+  maxConsecutiveWeeks?: number;
+  /** Whether this break is split between segments */
+  isSplit?: boolean;
+  /** Split point date (for split breaks like Winter Break) */
+  splitDate?: string;
+  /** Description of how the break is divided */
+  splitDescription?: string;
+}
+
+/**
+ * Court-standard custody template that pre-configures the entire app state.
+ * Designed to minimize user input by providing jurisdiction-specific defaults.
+ */
+export interface CourtTemplate {
+  /** Unique identifier (e.g., "nevada-8th-district-standard") */
+  id: string;
+  /** Display name (e.g., "Nevada 8th District Court - Standard") */
+  name: string;
+  /** Court jurisdiction (e.g., "Nevada 8th District Court") */
+  jurisdiction: string;
+  /** Version for template updates (semver format) */
+  version: string;
+  /** Brief description of the template */
+  description: string;
+  /** Pre-configured pattern type */
+  defaultPattern: PatternType;
+  /** Default exchange time (HH:MM format) */
+  defaultExchangeTime: string;
+  /** Pre-configured holiday assignments */
+  holidays: HolidayAssignment[];
+  /** Major break configurations (summer, winter, spring) */
+  majorBreaks: MajorBreakConfig[];
+  /** Whether template requires child info for age-based rules */
+  requiresChildAge: boolean;
+  /** Optional notes about this template for display */
+  notes?: string;
+  /** Source document reference (e.g., PDF file name) */
+  sourceDocument?: string;
+  /** Last updated timestamp */
+  lastUpdated?: string;
+}
+
+/**
+ * Registry of available court templates.
+ * Key is the template ID for quick lookup.
+ */
+export type TemplateRegistry = Record<string, CourtTemplate>;
+
 // Re-export holiday types for convenience
 export * from './holidays';

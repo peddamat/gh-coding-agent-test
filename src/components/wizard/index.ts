@@ -15,6 +15,7 @@ export {
   HOLIDAYS,
   getDefaultHolidaySelections,
   getConfiguredHolidayCount,
+  TemplateSelector,
 } from './steps';
 export type { 
   ParentSetupProps, 
@@ -23,4 +24,6 @@ export type {
   HolidayAssignment,
   HolidayDefinition,
   HolidaySelection,
+  TemplateSelectorProps,
+  TemplateOption,
 } from './steps';
