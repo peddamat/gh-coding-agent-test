@@ -13,6 +13,21 @@ describe('calculatePlanExpiration', () => {
     expect(calculatePlanExpiration([])).toBeNull();
   });
 
+  test('returns null for children without valid birthdates', () => {
+    const children: Child[] = [
+      { id: '1', name: 'NoDate', birthdate: '', custodyEndAge: 18 },
+    ];
+    expect(calculatePlanExpiration(children)).toBeNull();
+  });
+
+  test('ignores children without valid birthdates when calculating', () => {
+    const children: Child[] = [
+      { id: '1', name: 'NoDate', birthdate: '', custodyEndAge: 18 },
+      { id: '2', name: 'HasDate', birthdate: '2015-03-15', custodyEndAge: 18 },
+    ];
+    expect(calculatePlanExpiration(children)).toBe('2033-03-15');
+  });
+
   test('calculates expiration for single child with default custodyEndAge', () => {
     const children: Child[] = [
       { id: '1', name: 'Alice', birthdate: '2015-03-15', custodyEndAge: 18 },

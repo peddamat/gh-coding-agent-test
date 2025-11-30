@@ -19,8 +19,15 @@ import type { Child, BirthdayConfig } from '../types';
 export function calculatePlanExpiration(children: Child[]): string | null {
   if (children.length === 0) return null;
 
+  // Filter out children without valid birthdates
+  const childrenWithBirthdates = children.filter(
+    (child) => child.birthdate && child.birthdate.match(/^\d{4}-\d{2}-\d{2}$/)
+  );
+  
+  if (childrenWithBirthdates.length === 0) return null;
+
   // Find the youngest child (latest birthdate)
-  const youngest = children.reduce((prev, curr) =>
+  const youngest = childrenWithBirthdates.reduce((prev, curr) =>
     prev.birthdate > curr.birthdate ? prev : curr
   );
 
