@@ -48,3 +48,6 @@ export interface MonthlyBreakdown {
   parentADays: number;
   parentBDays: number;
 }
+
+// Re-export holiday types for convenience
+export * from './holidays';
