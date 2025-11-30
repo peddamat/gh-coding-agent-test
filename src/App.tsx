@@ -9,6 +9,7 @@ import { WizardContainer, PatternPicker, HolidaySelector, TemplateSelector } fro
 import type { TemplateOption } from './components/wizard/steps/TemplateSelector';
 import { WizardProvider, useWizard, AppStateProvider, useAppState } from './context';
 import { getPatternByType, getSplitPercentages } from './data/patterns';
+import { syncBirthdaysWithChildren } from './utils/familyUtils';
 import { useCustodyEngine } from './hooks';
 import type { PatternType, AppConfig, HolidayUserConfig, BirthdayConfig, HolidayPresetType } from './types';
 import type { SplitPeriodConfig, SelectionPriorityConfig } from './types/holidays';
@@ -67,6 +68,14 @@ function WizardModal({
 
   const handleParentSetupChange = (parentSetup: ParentSetupData) => {
     dispatch({ type: 'SET_PARENTS', payload: parentSetup });
+    
+    // Sync birthdays with children changes
+    // This auto-generates birthdays for new children and removes them for deleted children
+    const syncedBirthdays = syncBirthdaysWithChildren(
+      state.enhancedHolidays.birthdays,
+      parentSetup.children
+    );
+    dispatch({ type: 'SET_ENHANCED_BIRTHDAYS', payload: syncedBirthdays });
   };
 
   // Template selection handler
