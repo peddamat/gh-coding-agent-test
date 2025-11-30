@@ -35,7 +35,7 @@ export interface WizardState {
   parentSetup: ParentSetupData;
   /** Holiday custody assignments (Step 3) - Legacy format */
   holidaySelections: HolidaySelection[];
-  /** Enhanced holiday configuration (Step 2) - New format with full holiday support */
+  /** Enhanced holiday configuration (Step 3) - New format with full holiday support */
   enhancedHolidays: EnhancedHolidayState;
 }
 
