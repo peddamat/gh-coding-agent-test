@@ -9,6 +9,10 @@ import { PATTERNS } from '../data/patterns';
 /**
  * Add days to a date string, returning a new date string.
  * Uses date-only arithmetic to avoid DST issues.
+ * 
+ * Note: We create a Date at midnight (T00:00:00), modify it using setDate(),
+ * then extract just the date portion. This approach handles month/year
+ * boundaries correctly (e.g., Jan 31 + 1 = Feb 1).
  */
 export function addDays(dateStr: string, days: number): string {
   const date = new Date(dateStr + 'T00:00:00');
@@ -60,8 +64,21 @@ export function isToday(dateStr: string): boolean {
 
 /**
  * Get owner for "same-weekends-monthly" pattern.
- * 1st, 3rd, and 5th weekends go to Parent B.
- * Weekdays and 2nd/4th weekends go to Parent A.
+ * 1st, 3rd, and 5th weekends go to Parent B (the other parent).
+ * Weekdays and 2nd/4th weekends go to Parent A (the starting parent).
+ * 
+ * Weekend number calculation:
+ * - Days 1-7 = Weekend 1 (any Sat/Sun in this range is the "1st weekend")
+ * - Days 8-14 = Weekend 2
+ * - Days 15-21 = Weekend 3
+ * - Days 22-28 = Weekend 4
+ * - Days 29-31 = Weekend 5 (only occurs in months with 5 weekends)
+ * 
+ * Example for January 2025:
+ * - Jan 4 (Sat), Jan 5 (Sun) -> Weekend 1 -> Parent B
+ * - Jan 11 (Sat), Jan 12 (Sun) -> Weekend 2 -> Parent A
+ * - Jan 18 (Sat), Jan 19 (Sun) -> Weekend 3 -> Parent B
+ * - Jan 25 (Sat), Jan 26 (Sun) -> Weekend 4 -> Parent A
  */
 export function getSameWeekendsOwner(date: string, startingParent: ParentId): ParentId {
   const d = new Date(date + 'T00:00:00');
@@ -74,6 +91,7 @@ export function getSameWeekendsOwner(date: string, startingParent: ParentId): Pa
   }
 
   // Calculate which weekend of the month (1st, 2nd, 3rd, 4th, or 5th)
+  // Days 1-7 = week 1, 8-14 = week 2, etc.
   const weekendNumber = Math.ceil(dayOfMonth / 7);
 
   // 1st, 3rd, 5th weekends go to the other parent (Parent B)
@@ -86,6 +104,16 @@ export function getSameWeekendsOwner(date: string, startingParent: ParentId): Pa
 
 /**
  * Get owner for a date based on the pattern cycle.
+ * 
+ * The function handles dates both before and after the start date correctly.
+ * For negative day differences (dates before start), we use double modulo
+ * to ensure a positive index:
+ * 
+ * Example with 14-day cycle:
+ * - Date is 3 days before start: daysDiff = -3
+ * - Simple modulo: -3 % 14 = -3 (invalid index)
+ * - Double modulo: ((-3 % 14) + 14) % 14 = (-3 + 14) % 14 = 11
+ * - This correctly wraps to day 11 of the pattern (counting back from end)
  */
 export function getPatternOwner(
   date: string,
@@ -95,7 +123,8 @@ export function getPatternOwner(
   startingParent: ParentId
 ): ParentId {
   const daysDiff = calculateDaysDifference(date, startDate);
-  // Handle negative days diff by wrapping correctly
+  // Handle negative days diff by wrapping correctly using double modulo
+  // This ensures we always get a positive index between 0 and cycleLength-1
   const index = ((daysDiff % cycleLength) + cycleLength) % cycleLength;
   const patternValue = pattern[index];
   
@@ -253,6 +282,10 @@ export function calculateYearlyStats(year: number, config: AppConfig): YearlySta
   }
 
   const totalDays = parentADays + parentBDays;
+  
+  // Calculate percentage with 2 decimal places precision
+  // We multiply by 10000, round, then divide by 100 to get values like 50.14%
+  // Example: (182 / 365) * 10000 = 4986.3... → round → 4986 → / 100 → 49.86
   return {
     parentA: {
       days: parentADays,

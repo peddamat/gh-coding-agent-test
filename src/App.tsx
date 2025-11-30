@@ -8,7 +8,7 @@ import { COLOR_OPTIONS } from './components/shared/colorOptions';
 import { WizardContainer, PatternPicker, ParentSetup, HolidaySelector } from './components/wizard';
 import { WizardProvider, useWizard } from './context';
 import { getPatternByType } from './data/patterns';
-import { useCustodyEngine } from './hooks';
+import { useCustodyEngine, formatDateString } from './hooks';
 import type { PatternType, AppConfig } from './types';
 import type { SplitType } from './data/patterns';
 import type { ParentSetupData, HolidaySelection } from './components/wizard';
@@ -22,10 +22,11 @@ const WIZARD_STEPS = [
 
 /**
  * Get today's date in YYYY-MM-DD format.
+ * Uses the shared formatDateString utility from hooks.
  */
 function getTodayDateString(): string {
   const today = new Date();
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  return formatDateString(today.getFullYear(), today.getMonth(), today.getDate());
 }
 
 /**
