@@ -4,14 +4,15 @@ import FocusTrap from 'focus-trap-react';
 import { CalendarGrid, MonthNavigation } from './components/calendar';
 import { Header, Container } from './components/layout';
 import { StatsPanel } from './components/stats';
-import { COLOR_OPTIONS } from './components/shared/colorOptions';
+import { COLOR_OPTIONS, DEFAULT_PARENT_A_COLOR, DEFAULT_PARENT_B_COLOR } from './components/shared/colorOptions';
 import { WizardContainer, PatternPicker, HolidaySelector } from './components/wizard';
 import { WizardProvider, useWizard, AppStateProvider, useAppState } from './context';
-import { getPatternByType } from './data/patterns';
+import { getPatternByType, getSplitPercentages } from './data/patterns';
 import { useCustodyEngine } from './hooks';
-import type { PatternType, AppConfig } from './types';
+import type { PatternType, AppConfig, HolidayUserConfig, BirthdayConfig, HolidayPresetType } from './types';
+import type { SplitPeriodConfig, SelectionPriorityConfig } from './types/holidays';
 import type { SplitType } from './data/patterns';
-import type { ParentSetupData, HolidaySelection } from './components/wizard';
+import type { ParentSetupData } from './components/wizard';
 
 /** Static wizard steps configuration - defined outside component to avoid recreation on each render */
 const WIZARD_STEPS = [
@@ -66,9 +67,29 @@ function WizardModal({
     dispatch({ type: 'SET_PARENTS', payload: parentSetup });
   };
 
-  const handleHolidaySelectionsChange = (holidaySelections: HolidaySelection[]) => {
-    dispatch({ type: 'SET_HOLIDAYS', payload: holidaySelections });
+  // Enhanced holiday handlers
+  const handleHolidayConfigsChange = (configs: HolidayUserConfig[]) => {
+    dispatch({ type: 'SET_ENHANCED_HOLIDAY_CONFIGS', payload: configs });
   };
+
+  const handleBirthdaysChange = (birthdays: BirthdayConfig[]) => {
+    dispatch({ type: 'SET_ENHANCED_BIRTHDAYS', payload: birthdays });
+  };
+
+  const handlePresetSelect = (preset: HolidayPresetType) => {
+    dispatch({ type: 'SET_ENHANCED_PRESET', payload: preset });
+  };
+
+  const handleWinterBreakSplitChange = (config: SplitPeriodConfig) => {
+    dispatch({ type: 'SET_ENHANCED_WINTER_BREAK_SPLIT', payload: config });
+  };
+
+  const handleSummerVacationConfigChange = (config: SelectionPriorityConfig) => {
+    dispatch({ type: 'SET_ENHANCED_SUMMER_VACATION_CONFIG', payload: config });
+  };
+
+  // Calculate base percentages for holiday impact preview
+  const basePercentages = useMemo(() => getSplitPercentages(state.split), [state.split]);
 
   if (!isOpen) return null;
 
@@ -119,10 +140,22 @@ function WizardModal({
               }
               return (
                 <HolidaySelector
-                  selections={state.holidaySelections}
-                  onSelectionsChange={handleHolidaySelectionsChange}
+                  holidayConfigs={state.enhancedHolidays.holidayConfigs}
+                  onHolidayConfigsChange={handleHolidayConfigsChange}
+                  birthdays={state.enhancedHolidays.birthdays}
+                  onBirthdaysChange={handleBirthdaysChange}
+                  selectedPreset={state.enhancedHolidays.selectedPreset}
+                  onPresetSelect={handlePresetSelect}
+                  winterBreakSplit={state.enhancedHolidays.winterBreakSplit}
+                  onWinterBreakSplitChange={handleWinterBreakSplitChange}
+                  summerVacationConfig={state.enhancedHolidays.summerVacationConfig}
+                  onSummerVacationConfigChange={handleSummerVacationConfigChange}
                   parentAName={state.parentSetup.parentAName || 'Parent A'}
                   parentBName={state.parentSetup.parentBName || 'Parent B'}
+                  parentAColor={state.parentSetup.parentAColor || DEFAULT_PARENT_A_COLOR}
+                  parentBColor={state.parentSetup.parentBColor || DEFAULT_PARENT_B_COLOR}
+                  basePercentageA={basePercentages.parentA}
+                  basePercentageB={basePercentages.parentB}
                 />
               );
             }}
@@ -161,8 +194,8 @@ function AppContent() {
   // Build AppConfig from AppState (persisted state takes priority)
   const appConfig: AppConfig = useMemo(() => appState.config, [appState.config]);
 
-  // Use the custody engine for calculations
-  const { getYearlyStats } = useCustodyEngine(appConfig);
+  // Use the custody engine for calculations with holiday support
+  const { getYearlyStats } = useCustodyEngine(appConfig, appState.holidays);
 
   // Calculate yearly stats for the current year
   const yearlyStats = useMemo(() => {
@@ -209,6 +242,9 @@ function AppContent() {
     // Dispatch to AppState for persistence
     dispatchAppState({ type: 'SET_CONFIG', payload: newAppState.config });
     dispatchAppState({ type: 'SET_PARENTS', payload: newAppState.parents });
+    if (newAppState.holidays) {
+      dispatchAppState({ type: 'SET_HOLIDAYS', payload: newAppState.holidays });
+    }
     
     console.log('Wizard finished with AppState:', newAppState);
   };
@@ -291,6 +327,7 @@ function AppContent() {
                   parentBColor={appState.parents.parentB.colorClass}
                   parentAName={appState.parents.parentA.name}
                   parentBName={appState.parents.parentB.name}
+                  holidays={appState.holidays}
                 />
               </div>
             </div>

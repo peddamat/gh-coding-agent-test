@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useReducer, useMemo, type ReactNode, type Dispatch } from 'react';
-import { wizardReducer, convertWizardToAppState, type WizardState, type WizardAction } from '../reducers/wizardReducer';
+import { wizardReducer, convertWizardToAppState, createDefaultEnhancedHolidayState, type WizardState, type WizardAction } from '../reducers/wizardReducer';
 import { getDefaultParentSetupData, getDefaultHolidaySelections } from '../components/wizard';
 import type { AppState } from '../types';
 
@@ -27,6 +27,7 @@ function createInitialWizardState(): WizardState {
     split: null,
     parentSetup: getDefaultParentSetupData(),
     holidaySelections: getDefaultHolidaySelections(),
+    enhancedHolidays: createDefaultEnhancedHolidayState(),
   };
 }
 

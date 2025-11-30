@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import type { WizardState } from '../../reducers/wizardReducer';
+import { createDefaultEnhancedHolidayState } from '../../reducers/wizardReducer';
 import { getDefaultParentSetupData, getDefaultHolidaySelections, type HolidaySelection } from '../../components/wizard';
 
 describe('WizardContext', () => {
@@ -9,6 +10,7 @@ describe('WizardContext', () => {
       split: null,
       parentSetup: getDefaultParentSetupData(),
       holidaySelections: getDefaultHolidaySelections(),
+      enhancedHolidays: createDefaultEnhancedHolidayState(),
     };
 
     test('initial state has null pattern', () => {
@@ -30,6 +32,11 @@ describe('WizardContext', () => {
       defaultState.holidaySelections.forEach((selection: HolidaySelection) => {
         expect(selection.assignment).toBe('alternate');
       });
+    });
+
+    test('initial state has enhanced holidays', () => {
+      expect(defaultState.enhancedHolidays.holidayConfigs.length).toBeGreaterThan(0);
+      expect(defaultState.enhancedHolidays.birthdays.length).toBeGreaterThan(0);
     });
   });
 
@@ -55,6 +62,7 @@ describe('WizardContext', () => {
         split: null,
         parentSetup: getDefaultParentSetupData(),
         holidaySelections: getDefaultHolidaySelections(),
+        enhancedHolidays: createDefaultEnhancedHolidayState(),
       };
 
       // Simulate SET_PATTERN action
@@ -92,6 +100,7 @@ describe('WizardContext', () => {
           { holidayId: 'christmas', assignment: 'parentA' },
           { holidayId: 'thanksgiving', assignment: 'parentB' },
         ],
+        enhancedHolidays: createDefaultEnhancedHolidayState(),
       };
 
       // Simulate going back and forth between steps

@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { wizardReducer, convertWizardToAppState, type WizardState, type WizardAction } from '../wizardReducer';
+import { wizardReducer, convertWizardToAppState, createDefaultEnhancedHolidayState, type WizardState, type WizardAction } from '../wizardReducer';
 import { getDefaultParentSetupData, getDefaultHolidaySelections } from '../../components/wizard';
 
 describe('wizardReducer', () => {
@@ -8,6 +8,7 @@ describe('wizardReducer', () => {
     split: null,
     parentSetup: getDefaultParentSetupData(),
     holidaySelections: getDefaultHolidaySelections(),
+    enhancedHolidays: createDefaultEnhancedHolidayState(),
   };
 
   describe('SET_PATTERN action', () => {
@@ -145,6 +146,7 @@ describe('wizardReducer', () => {
           parentAName: 'Modified',
         },
         holidaySelections: [{ holidayId: 'christmas', assignment: 'parentA' }],
+        enhancedHolidays: createDefaultEnhancedHolidayState(),
       };
       const action: WizardAction = { type: 'RESET', payload: initialState };
       const newState = wizardReducer(modifiedState, action);
@@ -178,6 +180,7 @@ describe('convertWizardToAppState', () => {
         startingParent: 'parentA',
       },
       holidaySelections: getDefaultHolidaySelections(),
+      enhancedHolidays: createDefaultEnhancedHolidayState(),
     };
 
     const appState = convertWizardToAppState(wizardState);
@@ -198,6 +201,7 @@ describe('convertWizardToAppState', () => {
       split: null,
       parentSetup: getDefaultParentSetupData(),
       holidaySelections: getDefaultHolidaySelections(),
+      enhancedHolidays: createDefaultEnhancedHolidayState(),
     };
 
     const appState = convertWizardToAppState(wizardState);
@@ -218,6 +222,7 @@ describe('convertWizardToAppState', () => {
         startingParent: 'parentA',
       },
       holidaySelections: getDefaultHolidaySelections(),
+      enhancedHolidays: createDefaultEnhancedHolidayState(),
     };
 
     const appState = convertWizardToAppState(wizardState);
@@ -239,6 +244,7 @@ describe('convertWizardToAppState', () => {
         startingParent: 'parentB',
       },
       holidaySelections: getDefaultHolidaySelections(),
+      enhancedHolidays: createDefaultEnhancedHolidayState(),
     };
 
     const appState = convertWizardToAppState(wizardState);
