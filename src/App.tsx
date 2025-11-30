@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useId } from 'react';
+import { useState, useEffect, useCallback, useId, useMemo } from 'react';
 import { X } from 'lucide-react';
 import FocusTrap from 'focus-trap-react';
 import { CalendarGrid, MonthNavigation } from './components/calendar';
@@ -8,7 +8,8 @@ import { COLOR_OPTIONS } from './components/shared/colorOptions';
 import { WizardContainer, PatternPicker, ParentSetup, HolidaySelector } from './components/wizard';
 import { WizardProvider, useWizard } from './context';
 import { getPatternByType } from './data/patterns';
-import type { PatternType, MonthlyBreakdown, TimeshareStats } from './types';
+import { useCustodyEngine, formatDateString } from './hooks';
+import type { PatternType, AppConfig } from './types';
 import type { SplitType } from './data/patterns';
 import type { ParentSetupData, HolidaySelection } from './components/wizard';
 
@@ -19,27 +20,14 @@ const WIZARD_STEPS = [
   { title: 'Holiday Settings', description: 'Set holiday custody rules' },
 ];
 
-/** Mock monthly data for stats display */
-const mockMonthlyData: MonthlyBreakdown[] = [
-  { month: 'Jan', parentADays: 16, parentBDays: 15 },
-  { month: 'Feb', parentADays: 14, parentBDays: 14 },
-  { month: 'Mar', parentADays: 16, parentBDays: 15 },
-  { month: 'Apr', parentADays: 15, parentBDays: 15 },
-  { month: 'May', parentADays: 16, parentBDays: 15 },
-  { month: 'Jun', parentADays: 15, parentBDays: 15 },
-  { month: 'Jul', parentADays: 16, parentBDays: 15 },
-  { month: 'Aug', parentADays: 16, parentBDays: 15 },
-  { month: 'Sep', parentADays: 15, parentBDays: 15 },
-  { month: 'Oct', parentADays: 16, parentBDays: 15 },
-  { month: 'Nov', parentADays: 15, parentBDays: 15 },
-  { month: 'Dec', parentADays: 16, parentBDays: 15 },
-];
-
-/** Mock stats for stats display (182 + 183 = 365 days) */
-const mockStats: TimeshareStats = {
-  parentA: { days: 182, percentage: 50 },
-  parentB: { days: 183, percentage: 50 },
-};
+/**
+ * Get today's date in YYYY-MM-DD format.
+ * Uses the shared formatDateString utility from hooks.
+ */
+function getTodayDateString(): string {
+  const today = new Date();
+  return formatDateString(today.getFullYear(), today.getMonth(), today.getDate());
+}
 
 /**
  * Wizard modal overlay component.
@@ -170,6 +158,22 @@ function AppContent() {
   const [showWizard, setShowWizard] = useState(true);
   const { state: wizardState, toAppState, reset } = useWizard();
 
+  // Build AppConfig from wizard state
+  const appConfig: AppConfig = useMemo(() => ({
+    startDate: wizardState.parentSetup.startDate || getTodayDateString(),
+    selectedPattern: wizardState.pattern || 'alt-weeks',
+    startingParent: wizardState.parentSetup.startingParent || 'parentA',
+    exchangeTime: '18:00', // Default exchange time (not yet configurable in wizard)
+  }), [wizardState.pattern, wizardState.parentSetup.startDate, wizardState.parentSetup.startingParent]);
+
+  // Use the custody engine for calculations
+  const { getYearlyStats } = useCustodyEngine(appConfig);
+
+  // Calculate yearly stats for the current year
+  const yearlyStats = useMemo(() => {
+    return getYearlyStats(currentMonth.getFullYear());
+  }, [getYearlyStats, currentMonth]);
+
   const handleExportClick = () => {
     // Placeholder for future export functionality
     console.log('Export clicked');
@@ -264,7 +268,15 @@ function AppContent() {
 
               {/* Calendar Grid fills main area */}
               <div className="p-6">
-                <CalendarGrid currentMonth={currentMonth} hideTitle />
+                <CalendarGrid
+                  currentMonth={currentMonth}
+                  hideTitle
+                  appConfig={appConfig}
+                  parentAColor={wizardState.parentSetup.parentAColor || 'bg-blue-500'}
+                  parentBColor={wizardState.parentSetup.parentBColor || 'bg-pink-500'}
+                  parentAName={wizardState.parentSetup.parentAName || 'Parent A'}
+                  parentBName={wizardState.parentSetup.parentBName || 'Parent B'}
+                />
               </div>
             </div>
           </div>
@@ -272,7 +284,10 @@ function AppContent() {
           {/* Stats panel - takes 1/3 on desktop */}
           <div className="sticky top-6 lg:col-span-1">
             <StatsPanel
-              stats={mockStats}
+              stats={{
+                parentA: yearlyStats.parentA,
+                parentB: yearlyStats.parentB,
+              }}
               parentA={{
                 name: wizardState.parentSetup.parentAName || 'Parent A',
                 colorClass: wizardState.parentSetup.parentAColor || 'bg-blue-500',
@@ -281,7 +296,7 @@ function AppContent() {
                 name: wizardState.parentSetup.parentBName || 'Parent B',
                 colorClass: wizardState.parentSetup.parentBColor || 'bg-pink-500',
               }}
-              monthlyData={mockMonthlyData}
+              monthlyData={yearlyStats.monthlyBreakdown}
               parentAColor={COLOR_OPTIONS.find(opt => opt.value === wizardState.parentSetup.parentAColor)?.preview || '#3b82f6'}
               parentBColor={COLOR_OPTIONS.find(opt => opt.value === wizardState.parentSetup.parentBColor)?.preview || '#ec4899'}
             />
