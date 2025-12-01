@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import type { AppConfig, ParentId, CalendarDay, MonthlyBreakdown, HolidayState, HolidayUserConfig, AssignmentType } from '../types';
+import type { AppConfig, ParentId, CalendarDay, MonthlyBreakdown, HolidayState, HolidayUserConfig, AssignmentType, InServiceDayConfig } from '../types';
 import { PATTERNS } from '../data/patterns';
 import { getHolidayDates, getHolidayById } from '../data/holidays';
 
@@ -265,16 +265,223 @@ export function getOwnerForDateWithHolidays(
   return { owner: baseOwner, isHolidayOverride: false };
 }
 
+// ============================================================================
+// In-Service Day Logic
+// ============================================================================
+
+/**
+ * Check if a date falls on a weekend (Saturday or Sunday).
+ * Uses date-only arithmetic to avoid DST issues.
+ */
+export function isWeekend(dateStr: string): boolean {
+  const date = new Date(dateStr + 'T00:00:00');
+  const dayOfWeek = date.getDay();
+  return dayOfWeek === 0 || dayOfWeek === 6; // Sunday = 0, Saturday = 6
+}
+
+/**
+ * Check if a date is a holiday based on the holiday configurations.
+ */
+export function isHoliday(
+  dateStr: string,
+  holidayConfigs: HolidayUserConfig[]
+): boolean {
+  const year = parseInt(dateStr.split('-')[0], 10);
+  for (const config of holidayConfigs) {
+    if (!config.enabled) continue;
+    const holiday = getHolidayById(config.holidayId);
+    if (!holiday) continue;
+    const holidayDates = getHolidayDates(holiday, year);
+    if (holidayDates.includes(dateStr)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Get the owner of an adjacent holiday or weekend.
+ * Returns the owner if the date is a holiday or weekend, or null otherwise.
+ * 
+ * This is used for in-service day attachment logic - if an in-service day
+ * is adjacent to a holiday/weekend, it can be assigned to the same parent.
+ */
+export function getAdjacentSpecialDayOwner(
+  dateStr: string,
+  config: AppConfig,
+  holidays?: HolidayState
+): ParentId | null {
+  // Check if it's a holiday first (takes priority)
+  if (holidays?.holidayConfigs && holidays.holidayConfigs.length > 0) {
+    const holidayInfo = getHolidayForDate(dateStr, holidays.holidayConfigs);
+    if (holidayInfo) {
+      const year = parseInt(dateStr.split('-')[0], 10);
+      return resolveAssignment(
+        holidayInfo.config.assignment,
+        year,
+        config.startingParent
+      );
+    }
+  }
+
+  // Check if it's a weekend
+  if (isWeekend(dateStr)) {
+    return getOwnerForDate(dateStr, config);
+  }
+
+  return null;
+}
+
+/**
+ * Resolve in-service day ownership based on the attachment rule.
+ * 
+ * In-service days (teacher workdays) can be configured to attach to adjacent
+ * holidays/weekends, follow the base schedule, or always go to a specific parent.
+ * 
+ * The attachment rule 'attach-to-adjacent' checks if the previous or next day
+ * is a holiday or weekend, and if so, assigns the in-service day to whichever
+ * parent has that adjacent holiday/weekend.
+ * 
+ * @param date - The in-service day date (ISO 8601 string)
+ * @param isInServiceDay - Whether this date is marked as an in-service day
+ * @param inServiceConfig - Configuration for in-service day handling
+ * @param config - The app configuration
+ * @param holidays - Optional holiday state
+ * @returns The resolved owner and whether attachment was used
+ */
+export function resolveInServiceDay(
+  date: string,
+  isInServiceDay: boolean,
+  inServiceConfig: InServiceDayConfig | undefined,
+  config: AppConfig,
+  holidays?: HolidayState
+): { owner: ParentId; isInServiceAttached: boolean } {
+  // If not an in-service day or config is disabled, use base schedule
+  if (!isInServiceDay || !inServiceConfig?.enabled) {
+    const { owner } = getOwnerForDateWithHolidays(date, config, holidays);
+    return { owner, isInServiceAttached: false };
+  }
+
+  // Handle different attachment rules
+  switch (inServiceConfig.attachmentRule) {
+    case 'attach-to-adjacent': {
+      // Check if previous day is a holiday/weekend
+      const prevDate = addDays(date, -1);
+      const prevOwner = getAdjacentSpecialDayOwner(prevDate, config, holidays);
+      if (prevOwner) {
+        return { owner: prevOwner, isInServiceAttached: true };
+      }
+
+      // Check if next day is a holiday/weekend
+      const nextDate = addDays(date, 1);
+      const nextOwner = getAdjacentSpecialDayOwner(nextDate, config, holidays);
+      if (nextOwner) {
+        return { owner: nextOwner, isInServiceAttached: true };
+      }
+
+      // No adjacent special day, fall through to base schedule
+      const { owner } = getOwnerForDateWithHolidays(date, config, holidays);
+      return { owner, isInServiceAttached: false };
+    }
+
+    case 'always-parent-a':
+      return { owner: 'parentA', isInServiceAttached: true };
+
+    case 'always-parent-b':
+      return { owner: 'parentB', isInServiceAttached: true };
+
+    case 'follow-base-schedule':
+    default: {
+      const { owner } = getOwnerForDateWithHolidays(date, config, holidays);
+      return { owner, isInServiceAttached: false };
+    }
+  }
+}
+
+/**
+ * Get the full ownership result for a date, including in-service day consideration.
+ * This is the main function that implements the full priority stack including in-service days.
+ * 
+ * Priority (highest to lowest):
+ * 1. In-service day attachment (when adjacent to holiday/weekend)
+ * 2. Holiday override
+ * 3. Base schedule
+ */
+export function getOwnerForDateFull(
+  date: string,
+  config: AppConfig,
+  holidays?: HolidayState,
+  inServiceDays?: string[],
+  inServiceConfig?: InServiceDayConfig
+): {
+  owner: ParentId;
+  holidayName?: string;
+  isHolidayOverride: boolean;
+  isInServiceDay: boolean;
+  isInServiceAttached: boolean;
+} {
+  const isInService = inServiceDays?.includes(date) ?? false;
+
+  // If it's an in-service day and config is enabled, resolve using in-service logic
+  if (isInService && inServiceConfig?.enabled) {
+    const { owner, isInServiceAttached } = resolveInServiceDay(
+      date,
+      true,
+      inServiceConfig,
+      config,
+      holidays
+    );
+
+    // Even if attached, we still want to check for holiday name for display
+    const holidayInfo = holidays?.holidayConfigs
+      ? getHolidayForDate(date, holidays.holidayConfigs)
+      : null;
+
+    return {
+      owner,
+      holidayName: holidayInfo?.name,
+      isHolidayOverride: false, // In-service attachment takes precedence, not a holiday override
+      isInServiceDay: true,
+      isInServiceAttached,
+    };
+  }
+
+  // Not an in-service day or in-service handling disabled, use standard logic
+  const { owner, holidayName, isHolidayOverride } = getOwnerForDateWithHolidays(
+    date,
+    config,
+    holidays
+  );
+
+  return {
+    owner,
+    holidayName,
+    isHolidayOverride,
+    isInServiceDay: isInService,
+    isInServiceAttached: false,
+  };
+}
+
 /**
  * Generate calendar days for a given month.
  * Returns 42 days (6 weeks) to fill a standard calendar grid.
+ * 
+ * @param year - The year (e.g., 2025)
+ * @param month - The month (0-indexed, 0 = January)
+ * @param config - The app configuration
+ * @param weekStartsOnMonday - Whether the week starts on Monday (default: false, Sunday)
+ * @param holidays - Optional holiday state
+ * @param inServiceDays - Optional array of in-service day dates (ISO format)
+ * @param inServiceConfig - Optional in-service day configuration
  */
 export function generateMonthDays(
   year: number,
   month: number,
   config: AppConfig,
   weekStartsOnMonday: boolean = false,
-  holidays?: HolidayState
+  holidays?: HolidayState,
+  inServiceDays?: string[],
+  inServiceConfig?: InServiceDayConfig
 ): CalendarDay[] {
   const today = new Date();
   const todayStr = formatDateString(today.getFullYear(), today.getMonth(), today.getDate());
@@ -307,11 +514,19 @@ export function generateMonthDays(
     const isCurrentMonth = currentDate.getMonth() === month;
     const isTodayDate = dateStr === todayStr;
 
-    // Get owner with holiday consideration
-    const { owner, holidayName, isHolidayOverride } = getOwnerForDateWithHolidays(
+    // Get owner with full consideration (holidays + in-service days)
+    const {
+      owner,
+      holidayName,
+      isHolidayOverride,
+      isInServiceDay,
+      isInServiceAttached,
+    } = getOwnerForDateFull(
       dateStr,
       config,
-      holidays
+      holidays,
+      inServiceDays,
+      inServiceConfig
     );
 
     days.push({
@@ -322,6 +537,8 @@ export function generateMonthDays(
       isCurrentMonth,
       holidayName,
       isHolidayOverride,
+      isInServiceDay,
+      isInServiceAttached,
     });
   }
 
@@ -355,12 +572,16 @@ function getMonthName(month: number): string {
  * @param year - The year to calculate stats for
  * @param config - The app configuration
  * @param holidays - Optional holiday state for override consideration
+ * @param inServiceDays - Optional array of in-service day dates (ISO format)
+ * @param inServiceConfig - Optional in-service day configuration
  * @returns YearlyStats with day counts, percentages, and monthly breakdown
  */
 export function calculateYearlyStats(
   year: number,
   config: AppConfig,
-  holidays?: HolidayState
+  holidays?: HolidayState,
+  inServiceDays?: string[],
+  inServiceConfig?: InServiceDayConfig
 ): YearlyStats {
   let parentADays = 0;
   let parentBDays = 0;
@@ -374,7 +595,7 @@ export function calculateYearlyStats(
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = formatDateString(year, month, day);
-      const { owner } = getOwnerForDateWithHolidays(dateStr, config, holidays);
+      const { owner } = getOwnerForDateFull(dateStr, config, holidays, inServiceDays, inServiceConfig);
 
       if (owner === 'parentA') {
         parentADays++;
@@ -418,6 +639,14 @@ export interface UseCustodyEngineReturn {
   getOwnerForDate: (date: string) => ParentId;
   /** Get the custody owner for a specific date with holiday information */
   getOwnerForDateWithHolidays: (date: string) => { owner: ParentId; holidayName?: string; isHolidayOverride: boolean };
+  /** Get the full ownership info for a date including in-service day handling */
+  getOwnerForDateFull: (date: string) => {
+    owner: ParentId;
+    holidayName?: string;
+    isHolidayOverride: boolean;
+    isInServiceDay: boolean;
+    isInServiceAttached: boolean;
+  };
   /** Get calendar days for a specific month */
   getMonthDays: (year: number, month: number, weekStartsOnMonday?: boolean) => CalendarDay[];
   /** Get yearly stats including total days, percentage, and monthly breakdown */
@@ -430,9 +659,16 @@ export interface UseCustodyEngineReturn {
  *
  * @param config - The app configuration containing pattern, start date, and starting parent
  * @param holidays - Optional holiday state for override consideration
+ * @param inServiceDays - Optional array of in-service day dates (ISO format)
+ * @param inServiceConfig - Optional in-service day configuration
  * @returns Object with getOwnerForDate, getMonthDays, and getYearlyStats functions
  */
-export function useCustodyEngine(config: AppConfig, holidays?: HolidayState): UseCustodyEngineReturn {
+export function useCustodyEngine(
+  config: AppConfig,
+  holidays?: HolidayState,
+  inServiceDays?: string[],
+  inServiceConfig?: InServiceDayConfig
+): UseCustodyEngineReturn {
   const getOwnerForDateFn = useCallback(
     (date: string): ParentId => {
       return getOwnerForDate(date, config);
@@ -447,27 +683,41 @@ export function useCustodyEngine(config: AppConfig, holidays?: HolidayState): Us
     [config, holidays]
   );
 
+  const getOwnerForDateFullFn = useCallback(
+    (date: string): {
+      owner: ParentId;
+      holidayName?: string;
+      isHolidayOverride: boolean;
+      isInServiceDay: boolean;
+      isInServiceAttached: boolean;
+    } => {
+      return getOwnerForDateFull(date, config, holidays, inServiceDays, inServiceConfig);
+    },
+    [config, holidays, inServiceDays, inServiceConfig]
+  );
+
   const getMonthDaysFn = useCallback(
     (year: number, month: number, weekStartsOnMonday: boolean = false): CalendarDay[] => {
-      return generateMonthDays(year, month, config, weekStartsOnMonday, holidays);
+      return generateMonthDays(year, month, config, weekStartsOnMonday, holidays, inServiceDays, inServiceConfig);
     },
-    [config, holidays]
+    [config, holidays, inServiceDays, inServiceConfig]
   );
 
   const getYearlyStatsFn = useCallback(
     (year: number): YearlyStats => {
-      return calculateYearlyStats(year, config, holidays);
+      return calculateYearlyStats(year, config, holidays, inServiceDays, inServiceConfig);
     },
-    [config, holidays]
+    [config, holidays, inServiceDays, inServiceConfig]
   );
 
   return useMemo(
     () => ({
       getOwnerForDate: getOwnerForDateFn,
       getOwnerForDateWithHolidays: getOwnerForDateWithHolidaysFn,
+      getOwnerForDateFull: getOwnerForDateFullFn,
       getMonthDays: getMonthDaysFn,
       getYearlyStats: getYearlyStatsFn,
     }),
-    [getOwnerForDateFn, getOwnerForDateWithHolidaysFn, getMonthDaysFn, getYearlyStatsFn]
+    [getOwnerForDateFn, getOwnerForDateWithHolidaysFn, getOwnerForDateFullFn, getMonthDaysFn, getYearlyStatsFn]
   );
 }

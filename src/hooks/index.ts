@@ -9,6 +9,12 @@ export {
   getSameWeekendsOwner,
   getPatternOwner,
   getOwnerForDate,
+  getOwnerForDateWithHolidays,
+  getOwnerForDateFull,
+  isWeekend,
+  isHoliday,
+  getAdjacentSpecialDayOwner,
+  resolveInServiceDay,
   generateMonthDays,
   calculateYearlyStats,
 } from './useCustodyEngine';

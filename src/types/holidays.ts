@@ -220,6 +220,10 @@ export interface HolidayState {
   winterBreakSplit?: SplitPeriodConfig;
   /** Summer vacation configuration */
   summerVacationConfig?: SelectionPriorityConfig;
+  /** Religious holiday configurations */
+  religiousHolidayConfigs?: ReligiousHolidayUserConfig[];
+  /** Custom religious holidays defined by user */
+  customReligiousHolidays?: CustomReligiousHoliday[];
 }
 
 /**
@@ -258,5 +262,76 @@ export interface HolidayImpactBreakdown {
   majorBreaks: HolidayImpact;
   weekendHolidays: HolidayImpact;
   birthdays: HolidayImpact;
+  religiousHolidays: HolidayImpact;
   total: HolidayImpact;
+}
+
+// ============================================================================
+// Religious Holiday Types
+// ============================================================================
+
+/**
+ * Religion type for grouping religious holidays.
+ */
+export type ReligionType = 'jewish' | 'christian' | 'islamic' | 'other';
+
+/**
+ * Definition of a religious holiday with its dates.
+ * Religious holidays use lunar calendars, so we store specific dates for each year.
+ */
+export interface ReligiousHolidayDefinition {
+  /** Unique identifier for the holiday */
+  id: string;
+  /** Display name */
+  name: string;
+  /** Religion this holiday belongs to */
+  religion: ReligionType;
+  /** Number of days this holiday spans */
+  duration: number;
+  /** Description for display purposes */
+  description?: string;
+  /**
+   * Pre-computed dates for each year (YYYY-MM-DD format).
+   * Religious calendars are lunar-based and don't follow simple rules,
+   * so we store specific dates for years 2024-2030.
+   */
+  dates: Record<number, string>;
+}
+
+/**
+ * User's configuration for a specific religious holiday.
+ */
+export interface ReligiousHolidayUserConfig {
+  /** Holiday ID */
+  holidayId: string;
+  /** Whether this holiday is enabled */
+  enabled: boolean;
+  /** User-selected assignment type */
+  assignment: AssignmentType;
+}
+
+/**
+ * Custom religious holiday defined by the user.
+ */
+export interface CustomReligiousHoliday {
+  /** Unique identifier */
+  id: string;
+  /** Holiday name */
+  name: string;
+  /** Number of days */
+  duration: number;
+  /** User-defined dates for specific years (YYYY-MM-DD format) */
+  dates: Record<number, string>;
+  /** Assignment type */
+  assignment: AssignmentType;
+}
+
+/**
+ * Complete religious holiday configuration state.
+ */
+export interface ReligiousHolidayState {
+  /** User configurations for predefined religious holidays */
+  holidayConfigs: ReligiousHolidayUserConfig[];
+  /** Custom religious holidays defined by user */
+  customHolidays: CustomReligiousHoliday[];
 }

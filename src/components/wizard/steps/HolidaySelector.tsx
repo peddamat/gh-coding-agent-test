@@ -166,6 +166,7 @@ function calculateImpactBreakdown(
     majorBreaks: { parentADays: majorBreaksA, parentBDays: majorBreaksB },
     weekendHolidays: { parentADays: weekendHolidaysA, parentBDays: weekendHolidaysB },
     birthdays: { parentADays: Math.round(birthdaysA), parentBDays: Math.round(birthdaysB) },
+    religiousHolidays: { parentADays: 0, parentBDays: 0 }, // Calculated separately when religious holidays are configured
     total: {
       parentADays: majorBreaksA + weekendHolidaysA + Math.round(birthdaysA),
       parentBDays: majorBreaksB + weekendHolidaysB + Math.round(birthdaysB),
