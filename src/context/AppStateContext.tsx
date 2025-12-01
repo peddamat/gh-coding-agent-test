@@ -10,7 +10,8 @@ import {
   type Dispatch,
 } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import type { AppState, AppConfig, ParentConfig, PatternType, HolidayState, FamilyInfo, Child, InServiceDayConfig } from '../types';
+import { getTodayDateString } from '../hooks/useCustodyEngine';
+import type { AppState, AppConfig, ParentConfig, PatternType, HolidayState, FamilyInfo, Child, InServiceDayConfig, SchoolType, TrackBreak } from '../types';
 import { createDefaultHolidayConfigs, createDefaultBirthdayConfigs } from '../data/holidays';
 
 /**
@@ -37,16 +38,16 @@ export type AppStateAction =
   | { type: 'ADD_IN_SERVICE_DAY'; payload: string }
   | { type: 'REMOVE_IN_SERVICE_DAY'; payload: string }
   | { type: 'SET_IN_SERVICE_CONFIG'; payload: InServiceDayConfig }
+  | { type: 'SET_SCHOOL_TYPE'; payload: SchoolType }
+  | { type: 'SET_TRACK_BREAKS'; payload: TrackBreak[] }
+  | { type: 'ADD_TRACK_BREAK'; payload: TrackBreak }
+  | { type: 'UPDATE_TRACK_BREAK'; payload: TrackBreak }
+  | { type: 'REMOVE_TRACK_BREAK'; payload: string } // payload is track break id
+  | { type: 'CLAIM_TRACK_BREAK_VACATION'; payload: { trackBreakId: string; claimedBy: import('../types').ParentId; claimDate: string; weeks: number } }
+  | { type: 'UNCLAIM_TRACK_BREAK_VACATION'; payload: string } // payload is track break id
+  | { type: 'SET_TRACK_VACATION_NOTICE_DEADLINE'; payload: number }
   | { type: 'RESET' }
   | { type: 'LOAD_STATE'; payload: AppState };
-
-/**
- * Get today's date in ISO format (YYYY-MM-DD).
- */
-function getTodayDateString(): string {
-  const today = new Date();
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-}
 
 /**
  * Get default holiday state.
@@ -99,6 +100,9 @@ export const initialAppState: AppState = {
   familyInfo: getDefaultFamilyInfo(),
   inServiceDays: [],
   inServiceConfig: getDefaultInServiceConfig(),
+  schoolType: 'traditional',
+  trackBreaks: [],
+  trackVacationNoticeDeadline: 30,
 };
 
 /**
@@ -182,6 +186,64 @@ export function appStateReducer(state: AppState, action: AppStateAction): AppSta
       };
     case 'SET_IN_SERVICE_CONFIG':
       return { ...state, inServiceConfig: action.payload };
+    case 'SET_SCHOOL_TYPE':
+      return { ...state, schoolType: action.payload };
+    case 'SET_TRACK_BREAKS':
+      return { ...state, trackBreaks: action.payload };
+    case 'ADD_TRACK_BREAK':
+      return {
+        ...state,
+        trackBreaks: state.trackBreaks
+          ? [...state.trackBreaks, action.payload]
+          : [action.payload],
+      };
+    case 'UPDATE_TRACK_BREAK':
+      return {
+        ...state,
+        trackBreaks: state.trackBreaks
+          ? state.trackBreaks.map((tb) =>
+              tb.id === action.payload.id ? action.payload : tb
+            )
+          : [action.payload],
+      };
+    case 'REMOVE_TRACK_BREAK':
+      return {
+        ...state,
+        trackBreaks: state.trackBreaks
+          ? state.trackBreaks.filter((tb) => tb.id !== action.payload)
+          : [],
+      };
+    case 'CLAIM_TRACK_BREAK_VACATION':
+      return {
+        ...state,
+        trackBreaks: state.trackBreaks
+          ? state.trackBreaks.map((tb) =>
+              tb.id === action.payload.trackBreakId
+                ? {
+                    ...tb,
+                    vacationClaimed: {
+                      claimedBy: action.payload.claimedBy,
+                      claimDate: action.payload.claimDate,
+                      weeks: action.payload.weeks,
+                    },
+                  }
+                : tb
+            )
+          : [],
+      };
+    case 'UNCLAIM_TRACK_BREAK_VACATION':
+      return {
+        ...state,
+        trackBreaks: state.trackBreaks
+          ? state.trackBreaks.map((tb) =>
+              tb.id === action.payload
+                ? { ...tb, vacationClaimed: undefined }
+                : tb
+            )
+          : [],
+      };
+    case 'SET_TRACK_VACATION_NOTICE_DEADLINE':
+      return { ...state, trackVacationNoticeDeadline: action.payload };
     case 'RESET':
       return initialAppState;
     case 'LOAD_STATE':

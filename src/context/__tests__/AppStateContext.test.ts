@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { appStateReducer, initialAppState } from '../AppStateContext';
 import type { AppStateAction } from '../AppStateContext';
-import type { AppState, AppConfig, ParentConfig, PatternType, Child, FamilyInfo } from '../../types';
+import type { AppState, AppConfig, ParentConfig, PatternType, Child, FamilyInfo, TrackBreak } from '../../types';
 
 describe('AppStateContext', () => {
   describe('initialAppState', () => {
@@ -475,6 +475,208 @@ describe('AppStateContext', () => {
       const effectiveState = storedState ?? initialAppState;
 
       expect(effectiveState).toEqual(initialAppState);
+    });
+  });
+});
+
+// ============================================================================
+// Track Break Actions Tests
+// ============================================================================
+
+describe('Track Break Actions', () => {
+  const sampleTrackBreak: TrackBreak = {
+    id: 'fall-break-2025',
+    name: 'Fall Track Break',
+    startDate: '2025-10-06',
+    endDate: '2025-10-17',
+  };
+
+  const anotherTrackBreak: TrackBreak = {
+    id: 'spring-break-2025',
+    name: 'Spring Track Break',
+    startDate: '2025-03-24',
+    endDate: '2025-04-04',
+  };
+
+  describe('SET_SCHOOL_TYPE action', () => {
+    test('sets school type to year-round', () => {
+      const action: AppStateAction = { type: 'SET_SCHOOL_TYPE', payload: 'year-round' };
+      const newState = appStateReducer(initialAppState, action);
+      expect(newState.schoolType).toBe('year-round');
+    });
+
+    test('sets school type to traditional', () => {
+      const stateWithYearRound: AppState = {
+        ...initialAppState,
+        schoolType: 'year-round',
+      };
+      const action: AppStateAction = { type: 'SET_SCHOOL_TYPE', payload: 'traditional' };
+      const newState = appStateReducer(stateWithYearRound, action);
+      expect(newState.schoolType).toBe('traditional');
+    });
+  });
+
+  describe('SET_TRACK_BREAKS action', () => {
+    test('sets track breaks array', () => {
+      const trackBreaks = [sampleTrackBreak, anotherTrackBreak];
+      const action: AppStateAction = { type: 'SET_TRACK_BREAKS', payload: trackBreaks };
+      const newState = appStateReducer(initialAppState, action);
+      expect(newState.trackBreaks).toEqual(trackBreaks);
+    });
+
+    test('replaces existing track breaks', () => {
+      const stateWithBreaks: AppState = {
+        ...initialAppState,
+        trackBreaks: [sampleTrackBreak],
+      };
+      const action: AppStateAction = { type: 'SET_TRACK_BREAKS', payload: [anotherTrackBreak] };
+      const newState = appStateReducer(stateWithBreaks, action);
+      expect(newState.trackBreaks).toEqual([anotherTrackBreak]);
+    });
+  });
+
+  describe('ADD_TRACK_BREAK action', () => {
+    test('adds track break to empty array', () => {
+      const action: AppStateAction = { type: 'ADD_TRACK_BREAK', payload: sampleTrackBreak };
+      const newState = appStateReducer(initialAppState, action);
+      expect(newState.trackBreaks).toHaveLength(1);
+      expect(newState.trackBreaks?.[0]).toEqual(sampleTrackBreak);
+    });
+
+    test('adds track break to existing array', () => {
+      const stateWithBreak: AppState = {
+        ...initialAppState,
+        trackBreaks: [sampleTrackBreak],
+      };
+      const action: AppStateAction = { type: 'ADD_TRACK_BREAK', payload: anotherTrackBreak };
+      const newState = appStateReducer(stateWithBreak, action);
+      expect(newState.trackBreaks).toHaveLength(2);
+      expect(newState.trackBreaks).toContainEqual(anotherTrackBreak);
+    });
+  });
+
+  describe('UPDATE_TRACK_BREAK action', () => {
+    test('updates existing track break', () => {
+      const stateWithBreak: AppState = {
+        ...initialAppState,
+        trackBreaks: [sampleTrackBreak],
+      };
+      const updatedBreak: TrackBreak = {
+        ...sampleTrackBreak,
+        name: 'Updated Fall Break',
+      };
+      const action: AppStateAction = { type: 'UPDATE_TRACK_BREAK', payload: updatedBreak };
+      const newState = appStateReducer(stateWithBreak, action);
+      expect(newState.trackBreaks?.[0].name).toBe('Updated Fall Break');
+    });
+
+    test('does not modify other track breaks', () => {
+      const stateWithBreaks: AppState = {
+        ...initialAppState,
+        trackBreaks: [sampleTrackBreak, anotherTrackBreak],
+      };
+      const updatedBreak: TrackBreak = {
+        ...sampleTrackBreak,
+        name: 'Updated Fall Break',
+      };
+      const action: AppStateAction = { type: 'UPDATE_TRACK_BREAK', payload: updatedBreak };
+      const newState = appStateReducer(stateWithBreaks, action);
+      expect(newState.trackBreaks?.[1]).toEqual(anotherTrackBreak);
+    });
+  });
+
+  describe('REMOVE_TRACK_BREAK action', () => {
+    test('removes track break by id', () => {
+      const stateWithBreaks: AppState = {
+        ...initialAppState,
+        trackBreaks: [sampleTrackBreak, anotherTrackBreak],
+      };
+      const action: AppStateAction = { type: 'REMOVE_TRACK_BREAK', payload: sampleTrackBreak.id };
+      const newState = appStateReducer(stateWithBreaks, action);
+      expect(newState.trackBreaks).toHaveLength(1);
+      expect(newState.trackBreaks?.[0]).toEqual(anotherTrackBreak);
+    });
+
+    test('handles non-existent id gracefully', () => {
+      const stateWithBreak: AppState = {
+        ...initialAppState,
+        trackBreaks: [sampleTrackBreak],
+      };
+      const action: AppStateAction = { type: 'REMOVE_TRACK_BREAK', payload: 'non-existent' };
+      const newState = appStateReducer(stateWithBreak, action);
+      expect(newState.trackBreaks).toHaveLength(1);
+    });
+  });
+
+  describe('CLAIM_TRACK_BREAK_VACATION action', () => {
+    test('claims vacation on track break', () => {
+      const stateWithBreak: AppState = {
+        ...initialAppState,
+        trackBreaks: [sampleTrackBreak],
+      };
+      const action: AppStateAction = {
+        type: 'CLAIM_TRACK_BREAK_VACATION',
+        payload: {
+          trackBreakId: sampleTrackBreak.id,
+          claimedBy: 'parentA',
+          claimDate: '2025-09-01',
+          weeks: 2,
+        },
+      };
+      const newState = appStateReducer(stateWithBreak, action);
+      expect(newState.trackBreaks?.[0].vacationClaimed).toBeDefined();
+      expect(newState.trackBreaks?.[0].vacationClaimed?.claimedBy).toBe('parentA');
+      expect(newState.trackBreaks?.[0].vacationClaimed?.claimDate).toBe('2025-09-01');
+      expect(newState.trackBreaks?.[0].vacationClaimed?.weeks).toBe(2);
+    });
+
+    test('does not affect other track breaks', () => {
+      const stateWithBreaks: AppState = {
+        ...initialAppState,
+        trackBreaks: [sampleTrackBreak, anotherTrackBreak],
+      };
+      const action: AppStateAction = {
+        type: 'CLAIM_TRACK_BREAK_VACATION',
+        payload: {
+          trackBreakId: sampleTrackBreak.id,
+          claimedBy: 'parentB',
+          claimDate: '2025-09-01',
+          weeks: 2,
+        },
+      };
+      const newState = appStateReducer(stateWithBreaks, action);
+      expect(newState.trackBreaks?.[1].vacationClaimed).toBeUndefined();
+    });
+  });
+
+  describe('UNCLAIM_TRACK_BREAK_VACATION action', () => {
+    test('removes vacation claim from track break', () => {
+      const claimedBreak: TrackBreak = {
+        ...sampleTrackBreak,
+        vacationClaimed: {
+          claimedBy: 'parentA',
+          claimDate: '2025-09-01',
+          weeks: 2,
+        },
+      };
+      const stateWithClaim: AppState = {
+        ...initialAppState,
+        trackBreaks: [claimedBreak],
+      };
+      const action: AppStateAction = {
+        type: 'UNCLAIM_TRACK_BREAK_VACATION',
+        payload: sampleTrackBreak.id,
+      };
+      const newState = appStateReducer(stateWithClaim, action);
+      expect(newState.trackBreaks?.[0].vacationClaimed).toBeUndefined();
+    });
+  });
+
+  describe('SET_TRACK_VACATION_NOTICE_DEADLINE action', () => {
+    test('sets vacation notice deadline', () => {
+      const action: AppStateAction = { type: 'SET_TRACK_VACATION_NOTICE_DEADLINE', payload: 45 };
+      const newState = appStateReducer(initialAppState, action);
+      expect(newState.trackVacationNoticeDeadline).toBe(45);
     });
   });
 });
