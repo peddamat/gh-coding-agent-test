@@ -41,7 +41,7 @@ export interface DayOfWeekRule {
  * then extract just the date portion. This approach handles month/year
  * boundaries correctly (e.g., Jan 31 + 1 = Feb 1).
  */
-function addDays(dateStr: string, days: number): string {
+export function addDays(dateStr: string, days: number): string {
   const date = new Date(dateStr + 'T00:00:00');
   date.setDate(date.getDate() + days);
   return date.toISOString().split('T')[0];
@@ -93,7 +93,7 @@ export const VETERANS_DAY_EXPANSION: ExpansionRule = {
   rules: [
     { dayOfWeek: [5], expansion: 'full-weekend' },     // Friday → Fri-Sun
     { dayOfWeek: [6], expansion: 'full-weekend' },     // Saturday → Sat-Sun
-    { dayOfWeek: [0], expansion: 'include-friday' },   // Sunday → Fri-Sun (include Sat)
+    { dayOfWeek: [0], expansion: 'include-friday' },   // Sunday → Fri-Sun (Fri + Sat + Sun)
     { dayOfWeek: [1], expansion: 'full-weekend' },     // Monday → Sat-Mon
     { dayOfWeek: [2, 3, 4], expansion: 'none' },       // Tue/Wed/Thu → single day
   ],

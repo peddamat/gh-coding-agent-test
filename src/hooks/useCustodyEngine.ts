@@ -440,7 +440,10 @@ export function getOwnerForDateFull(
     return {
       owner,
       holidayName: holidayInfo?.name,
-      isHolidayOverride: false, // In-service attachment takes precedence, not a holiday override
+      // In-service attachment takes precedence over holiday assignment.
+      // We mark isHolidayOverride as false because the ownership is determined
+      // by the in-service attachment rule, not by the holiday's assignment.
+      isHolidayOverride: false,
       isInServiceDay: true,
       isInServiceAttached,
     };

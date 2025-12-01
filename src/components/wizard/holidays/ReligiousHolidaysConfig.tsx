@@ -43,6 +43,13 @@ const ASSIGNMENT_OPTIONS: { value: AssignmentType; label: string }[] = [
 const RELIGION_SECTIONS: ReligionType[] = ['jewish', 'christian', 'islamic'];
 
 /**
+ * Maximum duration for custom religious holidays in days.
+ * 14 days covers the longest standard religious observances (e.g., Passover is 7-8 days,
+ * Eid al-Adha is 4 days). Longer durations would be unusual and could indicate user error.
+ */
+const MAX_CUSTOM_HOLIDAY_DURATION = 14;
+
+/**
  * Collapsible section for a religion group.
  */
 function ReligionSection({
@@ -456,7 +463,7 @@ export function ReligiousHolidaysConfig({
                         id="custom-duration"
                         type="number"
                         min={1}
-                        max={14}
+                        max={MAX_CUSTOM_HOLIDAY_DURATION}
                         value={customDuration}
                         onChange={(e) =>
                           setCustomDuration(Math.max(1, parseInt(e.target.value) || 1))

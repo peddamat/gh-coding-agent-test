@@ -4,6 +4,7 @@ import type {
   ReligionType,
   AssignmentType,
 } from '../types/holidays';
+import { addDays } from '../utils/holidayExpansion';
 
 /**
  * Jewish holidays with dates for 2024-2030.
@@ -247,9 +248,7 @@ export function getReligiousHolidayDates(holiday: ReligiousHolidayDefinition, ye
 
   const dates: string[] = [];
   for (let i = 0; i < holiday.duration; i++) {
-    const date = new Date(startDate + 'T00:00:00');
-    date.setDate(date.getDate() + i);
-    dates.push(date.toISOString().split('T')[0]);
+    dates.push(addDays(startDate, i));
   }
   return dates;
 }

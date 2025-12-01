@@ -55,7 +55,8 @@ export function DayCell({ day, parentAColor, parentBColor }: DayCellProps) {
               day.isInServiceAttached 
                 ? 'text-green-300 fill-green-300' 
                 : 'text-gray-200'
-            )} 
+            )}
+            aria-hidden="true"
           />
         </div>
       )}
