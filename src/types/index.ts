@@ -108,6 +108,41 @@ export interface InServiceDayConfig {
   attachmentRule: InServiceAttachmentRule;
 }
 
+// ============================================================================
+// Year-Round School & Track Break Types
+// ============================================================================
+
+/**
+ * School type for determining how breaks are handled.
+ * - 'traditional': Standard school calendar with summer break
+ * - 'year-round': Year-round school with track breaks instead of summer
+ */
+export type SchoolType = 'traditional' | 'year-round';
+
+/**
+ * Represents a track break period in a year-round school calendar.
+ * Track breaks are shorter breaks distributed throughout the year.
+ */
+export interface TrackBreak {
+  /** Unique identifier for the track break */
+  id: string;
+  /** Display name (e.g., "Fall Track Break", "Winter Track Break") */
+  name: string;
+  /** Start date of the track break in ISO format (YYYY-MM-DD) */
+  startDate: string;
+  /** End date of the track break in ISO format (YYYY-MM-DD) */
+  endDate: string;
+  /** Vacation claim information if a parent has claimed this break */
+  vacationClaimed?: {
+    /** Which parent claimed the vacation */
+    claimedBy: ParentId;
+    /** When the claim was made (YYYY-MM-DD) */
+    claimDate: string;
+    /** Number of weeks claimed (typically the entire break) */
+    weeks: number;
+  };
+}
+
 export interface AppState {
   config: AppConfig;
   parents: {
@@ -121,6 +156,12 @@ export interface AppState {
   inServiceDays?: string[];
   /** Configuration for in-service day handling */
   inServiceConfig?: InServiceDayConfig;
+  /** School type: 'traditional' or 'year-round' */
+  schoolType?: SchoolType;
+  /** Array of track breaks for year-round school */
+  trackBreaks?: TrackBreak[];
+  /** Days before track break that vacation must be claimed (default 30) */
+  trackVacationNoticeDeadline?: number;
 }
 
 export interface CalendarDay {
@@ -137,6 +178,12 @@ export interface CalendarDay {
   isInServiceDay?: boolean;
   /** Whether this day's ownership is due to in-service attachment rule */
   isInServiceAttached?: boolean;
+  /** Whether this day is part of a track break period */
+  isTrackBreak?: boolean;
+  /** Name of the track break if this day is part of one */
+  trackBreakName?: string;
+  /** Whether this track break has a vacation claimed on it */
+  isTrackBreakVacationClaimed?: boolean;
 }
 
 export interface TimeshareStats {

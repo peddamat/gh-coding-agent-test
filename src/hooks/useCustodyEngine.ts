@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import type { AppConfig, ParentId, CalendarDay, MonthlyBreakdown, HolidayState, HolidayUserConfig, AssignmentType, InServiceDayConfig } from '../types';
+import type { AppConfig, ParentId, CalendarDay, MonthlyBreakdown, HolidayState, HolidayUserConfig, AssignmentType, InServiceDayConfig, TrackBreak, SchoolType } from '../types';
 import { PATTERNS } from '../data/patterns';
 import { getHolidayDates, getHolidayById } from '../data/holidays';
 import { addDays } from '../utils/holidayExpansion';
@@ -388,6 +388,103 @@ export function resolveInServiceDay(
   }
 }
 
+// ============================================================================
+// Track Break Logic (Year-Round School)
+// ============================================================================
+
+/**
+ * Check if a date falls within a track break period.
+ * Returns the track break if found, or null otherwise.
+ */
+export function getTrackBreakForDate(
+  dateStr: string,
+  trackBreaks: TrackBreak[]
+): TrackBreak | null {
+  for (const trackBreak of trackBreaks) {
+    if (dateStr >= trackBreak.startDate && dateStr <= trackBreak.endDate) {
+      return trackBreak;
+    }
+  }
+  return null;
+}
+
+/**
+ * Calculate the number of days between two dates.
+ * Returns positive number if date1 is after date2, negative otherwise.
+ */
+export function daysBetween(date1: string, date2: string): number {
+  const d1 = new Date(date1 + 'T00:00:00');
+  const d2 = new Date(date2 + 'T00:00:00');
+  const diffTime = d1.getTime() - d2.getTime();
+  return Math.round(diffTime / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Validate if a vacation claim can be made for a track break.
+ * 
+ * @param trackBreak - The track break to claim
+ * @param _claimingParent - The parent attempting to claim (reserved for future validation)
+ * @param claimDate - The date the claim is being made
+ * @param noticeDeadline - Number of days before break that claim must be made (default 30)
+ * @returns Object with valid boolean and optional reason string
+ */
+export function canClaimVacation(
+  trackBreak: TrackBreak,
+  _claimingParent: ParentId,
+  claimDate: string,
+  noticeDeadline: number = 30
+): { valid: boolean; reason?: string } {
+  // Calculate days until the break starts
+  const daysUntilBreak = daysBetween(trackBreak.startDate, claimDate);
+
+  // Check if within notice deadline
+  if (daysUntilBreak < noticeDeadline) {
+    return {
+      valid: false,
+      reason: `Must claim at least ${noticeDeadline} days before break (${daysUntilBreak} days remaining)`,
+    };
+  }
+
+  // Check if already claimed
+  if (trackBreak.vacationClaimed) {
+    return {
+      valid: false,
+      reason: `Already claimed by ${trackBreak.vacationClaimed.claimedBy === 'parentA' ? 'Parent A' : 'Parent B'}`,
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Get track break information for a date including vacation claim status.
+ */
+export function getTrackBreakInfo(
+  dateStr: string,
+  trackBreaks?: TrackBreak[],
+  schoolType?: SchoolType
+): {
+  isTrackBreak: boolean;
+  trackBreakName?: string;
+  vacationClaimed?: TrackBreak['vacationClaimed'];
+} {
+  // Only check track breaks if year-round school mode is enabled
+  if (schoolType !== 'year-round' || !trackBreaks || trackBreaks.length === 0) {
+    return { isTrackBreak: false };
+  }
+
+  const trackBreak = getTrackBreakForDate(dateStr, trackBreaks);
+  if (!trackBreak) {
+    return { isTrackBreak: false };
+  }
+
+  return {
+    isTrackBreak: true,
+    trackBreakName: trackBreak.name,
+    vacationClaimed: trackBreak.vacationClaimed,
+  };
+}
+
 /**
  * Get the full ownership result for a date, including in-service day consideration.
  * This is the main function that implements the full priority stack including in-service days.
@@ -456,6 +553,67 @@ export function getOwnerForDateFull(
 }
 
 /**
+ * Get the complete ownership result for a date, including track break support.
+ * This is the most comprehensive function that implements the full priority stack.
+ * 
+ * Priority (highest to lowest):
+ * 1. Track break vacation claim (when year-round school and vacation claimed)
+ * 2. In-service day attachment (when adjacent to holiday/weekend)
+ * 3. Holiday override
+ * 4. Base schedule (track breaks follow base schedule unless vacation claimed)
+ */
+export function getOwnerForDateComplete(
+  date: string,
+  config: AppConfig,
+  holidays?: HolidayState,
+  inServiceDays?: string[],
+  inServiceConfig?: InServiceDayConfig,
+  trackBreaks?: TrackBreak[],
+  schoolType?: SchoolType
+): {
+  owner: ParentId;
+  holidayName?: string;
+  isHolidayOverride: boolean;
+  isInServiceDay: boolean;
+  isInServiceAttached: boolean;
+  isTrackBreak: boolean;
+  trackBreakName?: string;
+  isTrackBreakVacationClaimed: boolean;
+} {
+  // Get base result from existing function
+  const baseResult = getOwnerForDateFull(
+    date,
+    config,
+    holidays,
+    inServiceDays,
+    inServiceConfig
+  );
+
+  // Get track break info
+  const trackBreakInfo = getTrackBreakInfo(date, trackBreaks, schoolType);
+
+  // If in a track break with a vacation claimed, the claiming parent gets the day
+  // This overrides the base schedule (highest priority for track breaks)
+  if (trackBreakInfo.isTrackBreak && trackBreakInfo.vacationClaimed) {
+    return {
+      ...baseResult,
+      owner: trackBreakInfo.vacationClaimed.claimedBy,
+      isTrackBreak: true,
+      trackBreakName: trackBreakInfo.trackBreakName,
+      isTrackBreakVacationClaimed: true,
+    };
+  }
+
+  // Track break without vacation follows regular schedule
+  return {
+    ...baseResult,
+    isTrackBreak: trackBreakInfo.isTrackBreak,
+    trackBreakName: trackBreakInfo.trackBreakName,
+    isTrackBreakVacationClaimed: false,
+  };
+}
+
+/**
  * Generate calendar days for a given month.
  * Returns 42 days (6 weeks) to fill a standard calendar grid.
  * 
@@ -466,6 +624,8 @@ export function getOwnerForDateFull(
  * @param holidays - Optional holiday state
  * @param inServiceDays - Optional array of in-service day dates (ISO format)
  * @param inServiceConfig - Optional in-service day configuration
+ * @param trackBreaks - Optional array of track breaks for year-round school
+ * @param schoolType - Optional school type (traditional or year-round)
  */
 export function generateMonthDays(
   year: number,
@@ -474,7 +634,9 @@ export function generateMonthDays(
   weekStartsOnMonday: boolean = false,
   holidays?: HolidayState,
   inServiceDays?: string[],
-  inServiceConfig?: InServiceDayConfig
+  inServiceConfig?: InServiceDayConfig,
+  trackBreaks?: TrackBreak[],
+  schoolType?: SchoolType
 ): CalendarDay[] {
   const today = new Date();
   const todayStr = formatDateString(today.getFullYear(), today.getMonth(), today.getDate());
@@ -507,19 +669,24 @@ export function generateMonthDays(
     const isCurrentMonth = currentDate.getMonth() === month;
     const isTodayDate = dateStr === todayStr;
 
-    // Get owner with full consideration (holidays + in-service days)
+    // Get owner with complete consideration (holidays + in-service days + track breaks)
     const {
       owner,
       holidayName,
       isHolidayOverride,
       isInServiceDay,
       isInServiceAttached,
-    } = getOwnerForDateFull(
+      isTrackBreak,
+      trackBreakName,
+      isTrackBreakVacationClaimed,
+    } = getOwnerForDateComplete(
       dateStr,
       config,
       holidays,
       inServiceDays,
-      inServiceConfig
+      inServiceConfig,
+      trackBreaks,
+      schoolType
     );
 
     days.push({
@@ -532,6 +699,9 @@ export function generateMonthDays(
       isHolidayOverride,
       isInServiceDay,
       isInServiceAttached,
+      isTrackBreak,
+      trackBreakName,
+      isTrackBreakVacationClaimed,
     });
   }
 
@@ -567,6 +737,8 @@ function getMonthName(month: number): string {
  * @param holidays - Optional holiday state for override consideration
  * @param inServiceDays - Optional array of in-service day dates (ISO format)
  * @param inServiceConfig - Optional in-service day configuration
+ * @param trackBreaks - Optional array of track breaks for year-round school
+ * @param schoolType - Optional school type (traditional or year-round)
  * @returns YearlyStats with day counts, percentages, and monthly breakdown
  */
 export function calculateYearlyStats(
@@ -574,7 +746,9 @@ export function calculateYearlyStats(
   config: AppConfig,
   holidays?: HolidayState,
   inServiceDays?: string[],
-  inServiceConfig?: InServiceDayConfig
+  inServiceConfig?: InServiceDayConfig,
+  trackBreaks?: TrackBreak[],
+  schoolType?: SchoolType
 ): YearlyStats {
   let parentADays = 0;
   let parentBDays = 0;
@@ -588,7 +762,15 @@ export function calculateYearlyStats(
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = formatDateString(year, month, day);
-      const { owner } = getOwnerForDateFull(dateStr, config, holidays, inServiceDays, inServiceConfig);
+      const { owner } = getOwnerForDateComplete(
+        dateStr,
+        config,
+        holidays,
+        inServiceDays,
+        inServiceConfig,
+        trackBreaks,
+        schoolType
+      );
 
       if (owner === 'parentA') {
         parentADays++;
@@ -640,6 +822,17 @@ export interface UseCustodyEngineReturn {
     isInServiceDay: boolean;
     isInServiceAttached: boolean;
   };
+  /** Get the complete ownership info for a date including track break handling */
+  getOwnerForDateComplete: (date: string) => {
+    owner: ParentId;
+    holidayName?: string;
+    isHolidayOverride: boolean;
+    isInServiceDay: boolean;
+    isInServiceAttached: boolean;
+    isTrackBreak: boolean;
+    trackBreakName?: string;
+    isTrackBreakVacationClaimed: boolean;
+  };
   /** Get calendar days for a specific month */
   getMonthDays: (year: number, month: number, weekStartsOnMonday?: boolean) => CalendarDay[];
   /** Get yearly stats including total days, percentage, and monthly breakdown */
@@ -654,13 +847,17 @@ export interface UseCustodyEngineReturn {
  * @param holidays - Optional holiday state for override consideration
  * @param inServiceDays - Optional array of in-service day dates (ISO format)
  * @param inServiceConfig - Optional in-service day configuration
+ * @param trackBreaks - Optional array of track breaks for year-round school
+ * @param schoolType - Optional school type (traditional or year-round)
  * @returns Object with getOwnerForDate, getMonthDays, and getYearlyStats functions
  */
 export function useCustodyEngine(
   config: AppConfig,
   holidays?: HolidayState,
   inServiceDays?: string[],
-  inServiceConfig?: InServiceDayConfig
+  inServiceConfig?: InServiceDayConfig,
+  trackBreaks?: TrackBreak[],
+  schoolType?: SchoolType
 ): UseCustodyEngineReturn {
   const getOwnerForDateFn = useCallback(
     (date: string): ParentId => {
@@ -689,18 +886,34 @@ export function useCustodyEngine(
     [config, holidays, inServiceDays, inServiceConfig]
   );
 
+  const getOwnerForDateCompleteFn = useCallback(
+    (date: string): {
+      owner: ParentId;
+      holidayName?: string;
+      isHolidayOverride: boolean;
+      isInServiceDay: boolean;
+      isInServiceAttached: boolean;
+      isTrackBreak: boolean;
+      trackBreakName?: string;
+      isTrackBreakVacationClaimed: boolean;
+    } => {
+      return getOwnerForDateComplete(date, config, holidays, inServiceDays, inServiceConfig, trackBreaks, schoolType);
+    },
+    [config, holidays, inServiceDays, inServiceConfig, trackBreaks, schoolType]
+  );
+
   const getMonthDaysFn = useCallback(
     (year: number, month: number, weekStartsOnMonday: boolean = false): CalendarDay[] => {
-      return generateMonthDays(year, month, config, weekStartsOnMonday, holidays, inServiceDays, inServiceConfig);
+      return generateMonthDays(year, month, config, weekStartsOnMonday, holidays, inServiceDays, inServiceConfig, trackBreaks, schoolType);
     },
-    [config, holidays, inServiceDays, inServiceConfig]
+    [config, holidays, inServiceDays, inServiceConfig, trackBreaks, schoolType]
   );
 
   const getYearlyStatsFn = useCallback(
     (year: number): YearlyStats => {
-      return calculateYearlyStats(year, config, holidays, inServiceDays, inServiceConfig);
+      return calculateYearlyStats(year, config, holidays, inServiceDays, inServiceConfig, trackBreaks, schoolType);
     },
-    [config, holidays, inServiceDays, inServiceConfig]
+    [config, holidays, inServiceDays, inServiceConfig, trackBreaks, schoolType]
   );
 
   return useMemo(
@@ -708,9 +921,10 @@ export function useCustodyEngine(
       getOwnerForDate: getOwnerForDateFn,
       getOwnerForDateWithHolidays: getOwnerForDateWithHolidaysFn,
       getOwnerForDateFull: getOwnerForDateFullFn,
+      getOwnerForDateComplete: getOwnerForDateCompleteFn,
       getMonthDays: getMonthDaysFn,
       getYearlyStats: getYearlyStatsFn,
     }),
-    [getOwnerForDateFn, getOwnerForDateWithHolidaysFn, getOwnerForDateFullFn, getMonthDaysFn, getYearlyStatsFn]
+    [getOwnerForDateFn, getOwnerForDateWithHolidaysFn, getOwnerForDateFullFn, getOwnerForDateCompleteFn, getMonthDaysFn, getYearlyStatsFn]
   );
 }

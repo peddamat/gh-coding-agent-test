@@ -14,8 +14,13 @@ import {
   isWeekend,
   resolveInServiceDay,
   getOwnerForDateFull,
+  getTrackBreakForDate,
+  daysBetween,
+  canClaimVacation,
+  getTrackBreakInfo,
+  getOwnerForDateComplete,
 } from '../useCustodyEngine';
-import type { AppConfig, InServiceDayConfig } from '../../types';
+import type { AppConfig, InServiceDayConfig, TrackBreak } from '../../types';
 
 describe('Date arithmetic utilities', () => {
   describe('addDays', () => {
@@ -1235,6 +1240,391 @@ describe('In-Service Day Logic (Issue #86)', () => {
       );
       expect(jan7Result.isInServiceDay).toBe(true);
       expect(jan7Result.isInServiceAttached).toBe(false);
+    });
+  });
+});
+
+// ============================================================================
+// Track Break Tests (Year-Round School)
+// ============================================================================
+
+describe('Track Break Logic', () => {
+  const sampleTrackBreaks: TrackBreak[] = [
+    {
+      id: 'fall-break-2025',
+      name: 'Fall Track Break',
+      startDate: '2025-10-06',
+      endDate: '2025-10-17',
+    },
+    {
+      id: 'winter-break-2025',
+      name: 'Winter Track Break',
+      startDate: '2025-12-22',
+      endDate: '2026-01-02',
+    },
+    {
+      id: 'spring-break-2025',
+      name: 'Spring Track Break',
+      startDate: '2025-03-24',
+      endDate: '2025-04-04',
+    },
+  ];
+
+  const claimedTrackBreak: TrackBreak = {
+    id: 'claimed-break',
+    name: 'Claimed Break',
+    startDate: '2025-06-01',
+    endDate: '2025-06-14',
+    vacationClaimed: {
+      claimedBy: 'parentB',
+      claimDate: '2025-04-01',
+      weeks: 2,
+    },
+  };
+
+  describe('getTrackBreakForDate', () => {
+    test('returns track break when date falls within range', () => {
+      const result = getTrackBreakForDate('2025-10-10', sampleTrackBreaks);
+      expect(result).not.toBeNull();
+      expect(result?.name).toBe('Fall Track Break');
+    });
+
+    test('returns null when date is outside all track breaks', () => {
+      const result = getTrackBreakForDate('2025-11-01', sampleTrackBreaks);
+      expect(result).toBeNull();
+    });
+
+    test('returns track break on start date', () => {
+      const result = getTrackBreakForDate('2025-10-06', sampleTrackBreaks);
+      expect(result?.name).toBe('Fall Track Break');
+    });
+
+    test('returns track break on end date', () => {
+      const result = getTrackBreakForDate('2025-10-17', sampleTrackBreaks);
+      expect(result?.name).toBe('Fall Track Break');
+    });
+
+    test('returns null for empty track breaks array', () => {
+      const result = getTrackBreakForDate('2025-10-10', []);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('daysBetween', () => {
+    test('calculates positive days between dates', () => {
+      expect(daysBetween('2025-01-15', '2025-01-01')).toBe(14);
+    });
+
+    test('calculates negative days between dates', () => {
+      expect(daysBetween('2025-01-01', '2025-01-15')).toBe(-14);
+    });
+
+    test('returns 0 for same date', () => {
+      expect(daysBetween('2025-01-01', '2025-01-01')).toBe(0);
+    });
+
+    test('handles month boundaries', () => {
+      expect(daysBetween('2025-02-01', '2025-01-31')).toBe(1);
+    });
+
+    test('handles year boundaries', () => {
+      expect(daysBetween('2026-01-01', '2025-12-31')).toBe(1);
+    });
+  });
+
+  describe('canClaimVacation', () => {
+    test('returns valid when within notice deadline', () => {
+      const trackBreak: TrackBreak = {
+        id: 'test-break',
+        name: 'Test Break',
+        startDate: '2025-06-01',
+        endDate: '2025-06-14',
+      };
+      
+      // Claim date is 60 days before break (well within 30-day deadline)
+      const result = canClaimVacation(trackBreak, 'parentA', '2025-04-02', 30);
+      expect(result.valid).toBe(true);
+      expect(result.reason).toBeUndefined();
+    });
+
+    test('returns invalid when past notice deadline', () => {
+      const trackBreak: TrackBreak = {
+        id: 'test-break',
+        name: 'Test Break',
+        startDate: '2025-06-01',
+        endDate: '2025-06-14',
+      };
+      
+      // Claim date is only 15 days before break (past 30-day deadline)
+      const result = canClaimVacation(trackBreak, 'parentA', '2025-05-17', 30);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toContain('Must claim at least 30 days before break');
+      expect(result.reason).toContain('15 days remaining');
+    });
+
+    test('returns invalid when already claimed', () => {
+      const result = canClaimVacation(claimedTrackBreak, 'parentA', '2025-04-01', 30);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toContain('Already claimed');
+      expect(result.reason).toContain('Parent B');
+    });
+
+    test('uses custom notice deadline', () => {
+      const trackBreak: TrackBreak = {
+        id: 'test-break',
+        name: 'Test Break',
+        startDate: '2025-06-01',
+        endDate: '2025-06-14',
+      };
+      
+      // With 60-day deadline, 50 days remaining should be invalid
+      const result = canClaimVacation(trackBreak, 'parentA', '2025-04-12', 60);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toContain('Must claim at least 60 days before break');
+    });
+  });
+
+  describe('getTrackBreakInfo', () => {
+    test('returns isTrackBreak false for traditional school type', () => {
+      const result = getTrackBreakInfo('2025-10-10', sampleTrackBreaks, 'traditional');
+      expect(result.isTrackBreak).toBe(false);
+      expect(result.trackBreakName).toBeUndefined();
+    });
+
+    test('returns isTrackBreak false when no track breaks provided', () => {
+      const result = getTrackBreakInfo('2025-10-10', undefined, 'year-round');
+      expect(result.isTrackBreak).toBe(false);
+    });
+
+    test('returns track break info for year-round school', () => {
+      const result = getTrackBreakInfo('2025-10-10', sampleTrackBreaks, 'year-round');
+      expect(result.isTrackBreak).toBe(true);
+      expect(result.trackBreakName).toBe('Fall Track Break');
+      expect(result.vacationClaimed).toBeUndefined();
+    });
+
+    test('returns vacation claimed info when present', () => {
+      const result = getTrackBreakInfo('2025-06-10', [claimedTrackBreak], 'year-round');
+      expect(result.isTrackBreak).toBe(true);
+      expect(result.trackBreakName).toBe('Claimed Break');
+      expect(result.vacationClaimed).toBeDefined();
+      expect(result.vacationClaimed?.claimedBy).toBe('parentB');
+    });
+
+    test('returns isTrackBreak false for date outside breaks', () => {
+      const result = getTrackBreakInfo('2025-11-01', sampleTrackBreaks, 'year-round');
+      expect(result.isTrackBreak).toBe(false);
+    });
+  });
+
+  describe('getOwnerForDateComplete with track breaks', () => {
+    const baseConfig: AppConfig = {
+      startDate: '2025-01-01',
+      selectedPattern: 'alt-weeks',
+      startingParent: 'parentA',
+      exchangeTime: '18:00',
+    };
+
+    test('returns base schedule owner for track break without vacation claimed', () => {
+      const result = getOwnerForDateComplete(
+        '2025-10-10',
+        baseConfig,
+        undefined,
+        undefined,
+        undefined,
+        sampleTrackBreaks,
+        'year-round'
+      );
+      
+      expect(result.isTrackBreak).toBe(true);
+      expect(result.trackBreakName).toBe('Fall Track Break');
+      expect(result.isTrackBreakVacationClaimed).toBe(false);
+      // Owner should be determined by base schedule (alt-weeks pattern)
+    });
+
+    test('returns claiming parent for track break with vacation claimed', () => {
+      const result = getOwnerForDateComplete(
+        '2025-06-10',
+        baseConfig,
+        undefined,
+        undefined,
+        undefined,
+        [claimedTrackBreak],
+        'year-round'
+      );
+      
+      expect(result.isTrackBreak).toBe(true);
+      expect(result.trackBreakName).toBe('Claimed Break');
+      expect(result.isTrackBreakVacationClaimed).toBe(true);
+      expect(result.owner).toBe('parentB'); // Claimed by parentB
+    });
+
+    test('ignores track breaks when school type is traditional', () => {
+      const result = getOwnerForDateComplete(
+        '2025-10-10',
+        baseConfig,
+        undefined,
+        undefined,
+        undefined,
+        sampleTrackBreaks,
+        'traditional'
+      );
+      
+      expect(result.isTrackBreak).toBe(false);
+      expect(result.trackBreakName).toBeUndefined();
+      expect(result.isTrackBreakVacationClaimed).toBe(false);
+    });
+
+    test('ignores track breaks when school type is undefined', () => {
+      const result = getOwnerForDateComplete(
+        '2025-10-10',
+        baseConfig,
+        undefined,
+        undefined,
+        undefined,
+        sampleTrackBreaks,
+        undefined
+      );
+      
+      expect(result.isTrackBreak).toBe(false);
+    });
+  });
+
+  describe('generateMonthDays with track breaks', () => {
+    const baseConfig: AppConfig = {
+      startDate: '2025-01-01',
+      selectedPattern: 'alt-weeks',
+      startingParent: 'parentA',
+      exchangeTime: '18:00',
+    };
+
+    test('includes track break info in calendar days for year-round school', () => {
+      // October 2025 contains the fall track break (Oct 6-17)
+      const days = generateMonthDays(
+        2025,
+        9, // October (0-indexed)
+        baseConfig,
+        false,
+        undefined,
+        undefined,
+        undefined,
+        sampleTrackBreaks,
+        'year-round'
+      );
+
+      // Find days within the track break
+      const trackBreakDays = days.filter(d => d.isTrackBreak);
+      
+      expect(trackBreakDays.length).toBeGreaterThan(0);
+      expect(trackBreakDays.some(d => d.trackBreakName === 'Fall Track Break')).toBe(true);
+    });
+
+    test('does not include track break info for traditional school', () => {
+      const days = generateMonthDays(
+        2025,
+        9, // October
+        baseConfig,
+        false,
+        undefined,
+        undefined,
+        undefined,
+        sampleTrackBreaks,
+        'traditional'
+      );
+
+      const trackBreakDays = days.filter(d => d.isTrackBreak);
+      expect(trackBreakDays.length).toBe(0);
+    });
+
+    test('shows vacation claimed status on calendar days', () => {
+      // June 2025 contains the claimed break (June 1-14)
+      const days = generateMonthDays(
+        2025,
+        5, // June (0-indexed)
+        baseConfig,
+        false,
+        undefined,
+        undefined,
+        undefined,
+        [claimedTrackBreak],
+        'year-round'
+      );
+
+      const claimedDays = days.filter(d => d.isTrackBreakVacationClaimed);
+      
+      expect(claimedDays.length).toBeGreaterThan(0);
+      // All claimed days should be owned by parentB
+      claimedDays.forEach(day => {
+        expect(day.owner).toBe('parentB');
+      });
+    });
+  });
+
+  describe('calculateYearlyStats with track breaks', () => {
+    const baseConfig: AppConfig = {
+      startDate: '2025-01-01',
+      selectedPattern: 'alt-weeks',
+      startingParent: 'parentA',
+      exchangeTime: '18:00',
+    };
+
+    test('accounts for track break vacation claims in yearly stats', () => {
+      // Create a track break where parentB claims 2 weeks that would normally go to parentA
+      // Using a 50/50 pattern, this should shift 14 days from A to B (if all 14 would have been A)
+      
+      const statsWithoutBreaks = calculateYearlyStats(
+        2025,
+        baseConfig,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'traditional'
+      );
+
+      const statsWithClaimedBreak = calculateYearlyStats(
+        2025,
+        baseConfig,
+        undefined,
+        undefined,
+        undefined,
+        [claimedTrackBreak], // 14 days claimed by parentB
+        'year-round'
+      );
+
+      // Total days should still be 365
+      expect(statsWithClaimedBreak.parentA.days + statsWithClaimedBreak.parentB.days).toBe(365);
+      expect(statsWithoutBreaks.parentA.days + statsWithoutBreaks.parentB.days).toBe(365);
+
+      // ParentB should have more days in the version with claimed vacation
+      // (the exact difference depends on how many of those 14 days were originally A's)
+      expect(statsWithClaimedBreak.parentB.days).toBeGreaterThanOrEqual(statsWithoutBreaks.parentB.days);
+    });
+
+    test('unclaimed track breaks follow base schedule', () => {
+      const statsTraditional = calculateYearlyStats(
+        2025,
+        baseConfig,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'traditional'
+      );
+
+      const statsYearRoundUnclaimed = calculateYearlyStats(
+        2025,
+        baseConfig,
+        undefined,
+        undefined,
+        undefined,
+        sampleTrackBreaks, // No claims on these
+        'year-round'
+      );
+
+      // With no vacation claims, year-round should produce same stats as traditional
+      expect(statsYearRoundUnclaimed.parentA.days).toBe(statsTraditional.parentA.days);
+      expect(statsYearRoundUnclaimed.parentB.days).toBe(statsTraditional.parentB.days);
     });
   });
 });

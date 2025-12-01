@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Star, BookOpen } from 'lucide-react';
+import { Star, BookOpen, Umbrella } from 'lucide-react';
 import type { CalendarDay } from '../../types';
 
 interface DayCellProps {
@@ -23,6 +23,13 @@ export function DayCell({ day, parentAColor, parentBColor }: DayCellProps) {
       tooltipParts.push('In-Service Day');
     }
   }
+  if (day.isTrackBreak && day.trackBreakName) {
+    if (day.isTrackBreakVacationClaimed) {
+      tooltipParts.push(`${day.trackBreakName} (Vacation Claimed)`);
+    } else {
+      tooltipParts.push(day.trackBreakName);
+    }
+  }
   const tooltipText = tooltipParts.length > 0 ? tooltipParts.join(' • ') : undefined;
 
   return (
@@ -35,6 +42,10 @@ export function DayCell({ day, parentAColor, parentBColor }: DayCellProps) {
         {
           'ring-2 ring-offset-2 ring-gray-900 shadow-lg scale-105': day.isToday,
           'opacity-40': !day.isCurrentMonth,
+          // Track break visual indicator: dashed border
+          'border-2 border-dashed border-white/60': day.isTrackBreak && !day.isTrackBreakVacationClaimed,
+          // Track break with vacation claimed: solid thick border
+          'border-2 border-solid border-white': day.isTrackBreak && day.isTrackBreakVacationClaimed,
         }
       )}
       title={tooltipText}
@@ -59,6 +70,25 @@ export function DayCell({ day, parentAColor, parentBColor }: DayCellProps) {
               day.isInServiceAttached 
                 ? 'text-green-300 fill-green-300' 
                 : 'text-gray-200'
+            )}
+            aria-hidden="true"
+          />
+        </div>
+      )}
+
+      {/* Track break indicator (bottom right) */}
+      {day.isTrackBreak && (
+        <div 
+          className="absolute bottom-0.5 right-0.5" 
+          role="img" 
+          aria-label={day.isTrackBreakVacationClaimed ? `${day.trackBreakName} - Vacation Claimed` : day.trackBreakName}
+        >
+          <Umbrella 
+            className={clsx(
+              'h-3 w-3',
+              day.isTrackBreakVacationClaimed 
+                ? 'text-yellow-300 fill-yellow-300' 
+                : 'text-white/70'
             )}
             aria-hidden="true"
           />
