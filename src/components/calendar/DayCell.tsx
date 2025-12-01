@@ -48,7 +48,11 @@ export function DayCell({ day, parentAColor, parentBColor }: DayCellProps) {
 
       {/* In-Service day indicator (top left) */}
       {day.isInServiceDay && (
-        <div className="absolute top-0.5 left-0.5">
+        <div 
+          className="absolute top-0.5 left-0.5" 
+          role="img" 
+          aria-label={day.isInServiceAttached ? 'In-Service Day attached to adjacent holiday/weekend' : 'In-Service Day'}
+        >
           <BookOpen 
             className={clsx(
               'h-3 w-3',

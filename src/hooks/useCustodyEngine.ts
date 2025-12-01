@@ -2,24 +2,14 @@ import { useMemo, useCallback } from 'react';
 import type { AppConfig, ParentId, CalendarDay, MonthlyBreakdown, HolidayState, HolidayUserConfig, AssignmentType, InServiceDayConfig } from '../types';
 import { PATTERNS } from '../data/patterns';
 import { getHolidayDates, getHolidayById } from '../data/holidays';
+import { addDays } from '../utils/holidayExpansion';
+
+// Re-export addDays for backwards compatibility with existing consumers
+export { addDays };
 
 /**
  * Date arithmetic utilities - CRITICAL: Use ISO 8601 strings to avoid DST issues.
  */
-
-/**
- * Add days to a date string, returning a new date string.
- * Uses date-only arithmetic to avoid DST issues.
- * 
- * Note: We create a Date at midnight (T00:00:00), modify it using setDate(),
- * then extract just the date portion. This approach handles month/year
- * boundaries correctly (e.g., Jan 31 + 1 = Feb 1).
- */
-export function addDays(dateStr: string, days: number): string {
-  const date = new Date(dateStr + 'T00:00:00');
-  date.setDate(date.getDate() + days);
-  return date.toISOString().split('T')[0];
-}
 
 /**
  * Calculate the difference in days between two date strings.
