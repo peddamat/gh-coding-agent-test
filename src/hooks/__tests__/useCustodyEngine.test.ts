@@ -1382,6 +1382,19 @@ describe('Track Break Logic', () => {
       expect(result.valid).toBe(false);
       expect(result.reason).toContain('Must claim at least 60 days before break');
     });
+
+    test('uses custom parent names in error message', () => {
+      const parentNames = { parentA: 'John', parentB: 'Jane' };
+      const result = canClaimVacation(claimedTrackBreak, 'parentA', '2025-04-01', 30, parentNames);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toContain('Already claimed by Jane'); // Should use custom name
+    });
+
+    test('falls back to default parent names when custom names not provided', () => {
+      const result = canClaimVacation(claimedTrackBreak, 'parentA', '2025-04-01', 30);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toContain('Already claimed by Parent B'); // Default name
+    });
   });
 
   describe('getTrackBreakInfo', () => {
@@ -1487,6 +1500,109 @@ describe('Track Break Logic', () => {
       );
       
       expect(result.isTrackBreak).toBe(false);
+    });
+
+    test('track break vacation claim overrides holiday assignment', () => {
+      // Create a holiday configuration that would assign June 5 to parentA
+      // Mock holiday state with a holiday on the same date as the claimed track break
+      const holidayState = {
+        holidayConfigs: [
+          {
+            holidayId: 'test-holiday',
+            enabled: true,
+            assignment: 'always-parent-a' as const,
+          },
+        ],
+        birthdays: [],
+      };
+
+      // The claimedTrackBreak covers June 1-14 and is claimed by parentB
+      // Even though a holiday would normally give the day to parentA,
+      // the track break vacation claim should take precedence
+      const result = getOwnerForDateComplete(
+        '2025-06-05',
+        baseConfig,
+        holidayState,
+        undefined,
+        undefined,
+        [claimedTrackBreak],
+        'year-round'
+      );
+
+      // Track break vacation claim should override the holiday
+      expect(result.owner).toBe('parentB');
+      expect(result.isTrackBreakVacationClaimed).toBe(true);
+      expect(result.isTrackBreak).toBe(true);
+      // Holiday override should be false because track break takes precedence
+      expect(result.isHolidayOverride).toBe(false);
+    });
+
+    test('track break vacation claim overrides in-service day attachment', () => {
+      // Create an in-service configuration that would attach to parentA
+      const inServiceConfig: InServiceDayConfig = {
+        enabled: true,
+        attachmentRule: 'always-parent-a',
+      };
+
+      // June 5 is marked as an in-service day
+      const inServiceDays = ['2025-06-05'];
+
+      // The claimedTrackBreak covers June 1-14 and is claimed by parentB
+      // Even though the in-service attachment would assign to parentA,
+      // the track break vacation claim should take precedence
+      const result = getOwnerForDateComplete(
+        '2025-06-05',
+        baseConfig,
+        undefined,
+        inServiceDays,
+        inServiceConfig,
+        [claimedTrackBreak],
+        'year-round'
+      );
+
+      // Track break vacation claim should override in-service attachment
+      expect(result.owner).toBe('parentB');
+      expect(result.isTrackBreakVacationClaimed).toBe(true);
+      expect(result.isInServiceDay).toBe(true); // Still marked as in-service for display
+      expect(result.isInServiceAttached).toBe(false); // But attachment is not applied
+    });
+
+    test('track break vacation claim overrides both holiday and in-service day', () => {
+      // Combined scenario: date is both a holiday and an in-service day
+      const holidayState = {
+        holidayConfigs: [
+          {
+            holidayId: 'test-holiday',
+            enabled: true,
+            assignment: 'always-parent-a' as const,
+          },
+        ],
+        birthdays: [],
+      };
+
+      const inServiceConfig: InServiceDayConfig = {
+        enabled: true,
+        attachmentRule: 'always-parent-a',
+      };
+
+      const inServiceDays = ['2025-06-05'];
+
+      // The claimedTrackBreak covers June 1-14 and is claimed by parentB
+      const result = getOwnerForDateComplete(
+        '2025-06-05',
+        baseConfig,
+        holidayState,
+        inServiceDays,
+        inServiceConfig,
+        [claimedTrackBreak],
+        'year-round'
+      );
+
+      // Track break vacation claim should override everything
+      expect(result.owner).toBe('parentB');
+      expect(result.isTrackBreakVacationClaimed).toBe(true);
+      expect(result.isHolidayOverride).toBe(false);
+      expect(result.isInServiceAttached).toBe(false);
     });
   });
 

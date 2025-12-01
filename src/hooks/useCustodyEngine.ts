@@ -37,6 +37,15 @@ export function formatDateString(year: number, month: number, day: number): stri
 }
 
 /**
+ * Get today's date in ISO format (YYYY-MM-DD).
+ * Shared utility for consistent date formatting across the application.
+ */
+export function getTodayDateString(): string {
+  const today = new Date();
+  return formatDateString(today.getFullYear(), today.getMonth(), today.getDate());
+}
+
+/**
  * Get the number of days in a month.
  * Month is 0-indexed (0 = January, 11 = December).
  */
@@ -426,13 +435,15 @@ export function daysBetween(date1: string, date2: string): number {
  * @param _claimingParent - The parent attempting to claim (reserved for future validation)
  * @param claimDate - The date the claim is being made
  * @param noticeDeadline - Number of days before break that claim must be made (default 30)
+ * @param parentNames - Optional custom parent names for error messages
  * @returns Object with valid boolean and optional reason string
  */
 export function canClaimVacation(
   trackBreak: TrackBreak,
   _claimingParent: ParentId,
   claimDate: string,
-  noticeDeadline: number = 30
+  noticeDeadline: number = 30,
+  parentNames?: { parentA: string; parentB: string }
 ): { valid: boolean; reason?: string } {
   // Calculate days until the break starts
   const daysUntilBreak = daysBetween(trackBreak.startDate, claimDate);
@@ -447,9 +458,12 @@ export function canClaimVacation(
 
   // Check if already claimed
   if (trackBreak.vacationClaimed) {
+    const claimedByName = trackBreak.vacationClaimed.claimedBy === 'parentA'
+      ? (parentNames?.parentA ?? 'Parent A')
+      : (parentNames?.parentB ?? 'Parent B');
     return {
       valid: false,
-      reason: `Already claimed by ${trackBreak.vacationClaimed.claimedBy === 'parentA' ? 'Parent A' : 'Parent B'}`,
+      reason: `Already claimed by ${claimedByName}`,
     };
   }
 
@@ -580,7 +594,31 @@ export function getOwnerForDateComplete(
   trackBreakName?: string;
   isTrackBreakVacationClaimed: boolean;
 } {
-  // Get base result from existing function
+  // Get track break info first (highest priority)
+  const trackBreakInfo = getTrackBreakInfo(date, trackBreaks, schoolType);
+
+  // If in a track break with a vacation claimed, the claiming parent gets the day
+  // This is the highest priority and overrides everything else including holidays and in-service days
+  if (trackBreakInfo.isTrackBreak && trackBreakInfo.vacationClaimed) {
+    // Still need to get other metadata for display purposes
+    const isInService = inServiceDays?.includes(date) ?? false;
+    const holidayInfo = holidays?.holidayConfigs
+      ? getHolidayForDate(date, holidays.holidayConfigs)
+      : null;
+
+    return {
+      owner: trackBreakInfo.vacationClaimed.claimedBy,
+      holidayName: holidayInfo?.name,
+      isHolidayOverride: false, // Track break vacation takes precedence
+      isInServiceDay: isInService,
+      isInServiceAttached: false, // Track break vacation takes precedence
+      isTrackBreak: true,
+      trackBreakName: trackBreakInfo.trackBreakName,
+      isTrackBreakVacationClaimed: true,
+    };
+  }
+
+  // No track break vacation claim, proceed with normal priority stack
   const baseResult = getOwnerForDateFull(
     date,
     config,
@@ -588,21 +626,6 @@ export function getOwnerForDateComplete(
     inServiceDays,
     inServiceConfig
   );
-
-  // Get track break info
-  const trackBreakInfo = getTrackBreakInfo(date, trackBreaks, schoolType);
-
-  // If in a track break with a vacation claimed, the claiming parent gets the day
-  // This overrides the base schedule (highest priority for track breaks)
-  if (trackBreakInfo.isTrackBreak && trackBreakInfo.vacationClaimed) {
-    return {
-      ...baseResult,
-      owner: trackBreakInfo.vacationClaimed.claimedBy,
-      isTrackBreak: true,
-      trackBreakName: trackBreakInfo.trackBreakName,
-      isTrackBreakVacationClaimed: true,
-    };
-  }
 
   // Track break without vacation follows regular schedule
   return {

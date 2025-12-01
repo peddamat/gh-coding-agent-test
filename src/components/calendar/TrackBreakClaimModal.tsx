@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import clsx from 'clsx';
 import { X, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
 import type { TrackBreak, ParentId } from '../../types';
-import { canClaimVacation, daysBetween } from '../../hooks/useCustodyEngine';
+import { canClaimVacation, daysBetween, getTodayDateString } from '../../hooks/useCustodyEngine';
 
 interface TrackBreakClaimModalProps {
   /** The track break to claim */
@@ -17,14 +17,6 @@ interface TrackBreakClaimModalProps {
   parentBName?: string;
   /** Number of days before break that vacation must be claimed (default 30) */
   noticeDeadline?: number;
-}
-
-/**
- * Get today's date in ISO format (YYYY-MM-DD).
- */
-function getTodayDateString(): string {
-  const today = new Date();
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 }
 
 /**
@@ -62,25 +54,36 @@ export function TrackBreakClaimModal({
   const [selectedParent, setSelectedParent] = useState<ParentId | null>(null);
   const [validation, setValidation] = useState<{ valid: boolean; reason?: string }>({ valid: true });
 
-  const today = getTodayDateString();
+  // Freeze today's date at component mount to avoid stale closures
+  // This is intentional - the claim date should be when the user opened the modal
+  const today = useMemo(() => getTodayDateString(), []);
   const weeks = calculateWeeks(trackBreak.startDate, trackBreak.endDate);
   const daysUntilBreak = daysBetween(trackBreak.startDate, today);
 
-  // Validate on mount and when track break changes
+  // Parent names for error messages
+  const parentNames = useMemo(() => ({
+    parentA: parentAName,
+    parentB: parentBName,
+  }), [parentAName, parentBName]);
+
+  // Validate on mount and when track break or selected parent changes
+  // Note: today is intentionally excluded from deps - we want to freeze it at mount
   useEffect(() => {
+    const currentDate = getTodayDateString(); // Recalculate for validation
     if (selectedParent) {
-      const result = canClaimVacation(trackBreak, selectedParent, today, noticeDeadline);
+      const result = canClaimVacation(trackBreak, selectedParent, currentDate, noticeDeadline, parentNames);
       setValidation(result);
     } else {
       // Pre-validate to check deadline even before parent selection
-      const result = canClaimVacation(trackBreak, 'parentA', today, noticeDeadline);
+      const result = canClaimVacation(trackBreak, 'parentA', currentDate, noticeDeadline, parentNames);
       setValidation(result);
     }
-  }, [trackBreak, selectedParent, today, noticeDeadline]);
+  }, [trackBreak, selectedParent, noticeDeadline, parentNames]);
 
   const handleClaim = () => {
     if (!selectedParent || !validation.valid) return;
-    onClaim(trackBreak.id, selectedParent, today, weeks);
+    const claimDate = getTodayDateString(); // Use fresh date for the actual claim
+    onClaim(trackBreak.id, selectedParent, claimDate, weeks);
     onClose();
   };
 

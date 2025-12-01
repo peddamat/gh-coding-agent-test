@@ -10,6 +10,7 @@ import {
   type Dispatch,
 } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { getTodayDateString } from '../hooks/useCustodyEngine';
 import type { AppState, AppConfig, ParentConfig, PatternType, HolidayState, FamilyInfo, Child, InServiceDayConfig, SchoolType, TrackBreak } from '../types';
 import { createDefaultHolidayConfigs, createDefaultBirthdayConfigs } from '../data/holidays';
 
@@ -47,14 +48,6 @@ export type AppStateAction =
   | { type: 'SET_TRACK_VACATION_NOTICE_DEADLINE'; payload: number }
   | { type: 'RESET' }
   | { type: 'LOAD_STATE'; payload: AppState };
-
-/**
- * Get today's date in ISO format (YYYY-MM-DD).
- */
-function getTodayDateString(): string {
-  const today = new Date();
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-}
 
 /**
  * Get default holiday state.
