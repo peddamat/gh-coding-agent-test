@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Star } from 'lucide-react';
+import { Star, BookOpen } from 'lucide-react';
 import type { CalendarDay } from '../../types';
 
 interface DayCellProps {
@@ -10,6 +10,20 @@ interface DayCellProps {
 
 export function DayCell({ day, parentAColor, parentBColor }: DayCellProps) {
   const backgroundColor = day.owner === 'parentA' ? parentAColor : parentBColor;
+
+  // Build tooltip text
+  const tooltipParts: string[] = [];
+  if (day.holidayName) {
+    tooltipParts.push(day.holidayName);
+  }
+  if (day.isInServiceDay) {
+    if (day.isInServiceAttached) {
+      tooltipParts.push('In-Service Day (attached to adjacent holiday/weekend)');
+    } else {
+      tooltipParts.push('In-Service Day');
+    }
+  }
+  const tooltipText = tooltipParts.length > 0 ? tooltipParts.join(' • ') : undefined;
 
   return (
     <div
@@ -23,12 +37,31 @@ export function DayCell({ day, parentAColor, parentBColor }: DayCellProps) {
           'opacity-40': !day.isCurrentMonth,
         }
       )}
-      title={day.holidayName ? `${day.holidayName}` : undefined}
+      title={tooltipText}
     >
-      {/* Holiday indicator */}
+      {/* Holiday indicator (top right) */}
       {day.isHolidayOverride && (
         <div className="absolute top-0.5 right-0.5">
           <Star className="h-3 w-3 text-yellow-300 fill-yellow-300" />
+        </div>
+      )}
+
+      {/* In-Service day indicator (top left) */}
+      {day.isInServiceDay && (
+        <div 
+          className="absolute top-0.5 left-0.5" 
+          role="img" 
+          aria-label={day.isInServiceAttached ? 'In-Service Day attached to adjacent holiday/weekend' : 'In-Service Day'}
+        >
+          <BookOpen 
+            className={clsx(
+              'h-3 w-3',
+              day.isInServiceAttached 
+                ? 'text-green-300 fill-green-300' 
+                : 'text-gray-200'
+            )}
+            aria-hidden="true"
+          />
         </div>
       )}
       

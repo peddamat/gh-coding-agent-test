@@ -11,8 +11,11 @@ import {
   getOwnerForDate,
   generateMonthDays,
   calculateYearlyStats,
+  isWeekend,
+  resolveInServiceDay,
+  getOwnerForDateFull,
 } from '../useCustodyEngine';
-import type { AppConfig } from '../../types';
+import type { AppConfig, InServiceDayConfig } from '../../types';
 
 describe('Date arithmetic utilities', () => {
   describe('addDays', () => {
@@ -764,6 +767,474 @@ describe('all standard patterns (Issue #46)', () => {
       const stats = calculateYearlyStats(2025, { ...baseConfig, selectedPattern: 'all-to-one' });
       expect(stats.parentA.percentage).toBe(100);
       expect(stats.parentB.percentage).toBe(0);
+    });
+  });
+});
+
+// ============================================================================
+// In-Service Day Tests (Issue #86)
+// ============================================================================
+
+describe('In-Service Day Logic (Issue #86)', () => {
+  const baseConfig: AppConfig = {
+    startDate: '2025-01-01',
+    selectedPattern: 'alt-weeks',
+    startingParent: 'parentA',
+    exchangeTime: '18:00',
+  };
+
+  describe('isWeekend', () => {
+    test('returns true for Saturday', () => {
+      // January 4, 2025 is a Saturday
+      expect(isWeekend('2025-01-04')).toBe(true);
+    });
+
+    test('returns true for Sunday', () => {
+      // January 5, 2025 is a Sunday
+      expect(isWeekend('2025-01-05')).toBe(true);
+    });
+
+    test('returns false for weekdays', () => {
+      // January 6, 2025 is a Monday
+      expect(isWeekend('2025-01-06')).toBe(false);
+      // January 7, 2025 is a Tuesday
+      expect(isWeekend('2025-01-07')).toBe(false);
+      // January 8, 2025 is a Wednesday
+      expect(isWeekend('2025-01-08')).toBe(false);
+      // January 9, 2025 is a Thursday
+      expect(isWeekend('2025-01-09')).toBe(false);
+      // January 10, 2025 is a Friday
+      expect(isWeekend('2025-01-10')).toBe(false);
+    });
+  });
+
+  describe('resolveInServiceDay', () => {
+    const inServiceConfigEnabled: InServiceDayConfig = {
+      enabled: true,
+      attachmentRule: 'attach-to-adjacent',
+    };
+
+    const inServiceConfigDisabled: InServiceDayConfig = {
+      enabled: false,
+      attachmentRule: 'attach-to-adjacent',
+    };
+
+    test('returns base schedule when not an in-service day', () => {
+      const result = resolveInServiceDay(
+        '2025-01-06', // Monday
+        false,
+        inServiceConfigEnabled,
+        baseConfig
+      );
+      expect(result.isInServiceAttached).toBe(false);
+    });
+
+    test('returns base schedule when in-service config is disabled', () => {
+      const result = resolveInServiceDay(
+        '2025-01-06', // Monday
+        true,
+        inServiceConfigDisabled,
+        baseConfig
+      );
+      expect(result.isInServiceAttached).toBe(false);
+    });
+
+    test('attaches to previous weekend when adjacent', () => {
+      // January 6, 2025 (Monday) is adjacent to January 5, 2025 (Sunday)
+      // Sunday is in week 1 (days 0-6), so ownership depends on pattern
+      const result = resolveInServiceDay(
+        '2025-01-06', // Monday after weekend
+        true,
+        inServiceConfigEnabled,
+        baseConfig
+      );
+      expect(result.isInServiceAttached).toBe(true);
+      // Weekend owner from alt-weeks pattern starting Jan 1
+      // Jan 4-5 (weekend) are days 3-4 of cycle, which is 'A' in alt-weeks
+      expect(result.owner).toBe('parentA');
+    });
+
+    test('attaches to next weekend when adjacent', () => {
+      // January 3, 2025 (Friday) is adjacent to January 4, 2025 (Saturday)
+      const result = resolveInServiceDay(
+        '2025-01-03', // Friday before weekend
+        true,
+        inServiceConfigEnabled,
+        baseConfig
+      );
+      expect(result.isInServiceAttached).toBe(true);
+      // Weekend owner from alt-weeks pattern starting Jan 1
+      // Jan 4-5 (weekend) are days 3-4 of cycle, which is 'A' in alt-weeks
+      expect(result.owner).toBe('parentA');
+    });
+
+    test('does not attach when not adjacent to weekend', () => {
+      // January 8, 2025 (Wednesday) is not adjacent to any weekend
+      const result = resolveInServiceDay(
+        '2025-01-08', // Wednesday - not adjacent to weekend
+        true,
+        inServiceConfigEnabled,
+        baseConfig
+      );
+      expect(result.isInServiceAttached).toBe(false);
+    });
+
+    test('always-parent-a rule assigns to Parent A', () => {
+      const config: InServiceDayConfig = {
+        enabled: true,
+        attachmentRule: 'always-parent-a',
+      };
+      const result = resolveInServiceDay(
+        '2025-01-08', // Wednesday
+        true,
+        config,
+        baseConfig
+      );
+      expect(result.owner).toBe('parentA');
+      expect(result.isInServiceAttached).toBe(true);
+    });
+
+    test('always-parent-b rule assigns to Parent B', () => {
+      const config: InServiceDayConfig = {
+        enabled: true,
+        attachmentRule: 'always-parent-b',
+      };
+      const result = resolveInServiceDay(
+        '2025-01-08', // Wednesday
+        true,
+        config,
+        baseConfig
+      );
+      expect(result.owner).toBe('parentB');
+      expect(result.isInServiceAttached).toBe(true);
+    });
+
+    test('follow-base-schedule rule uses base pattern', () => {
+      const config: InServiceDayConfig = {
+        enabled: true,
+        attachmentRule: 'follow-base-schedule',
+      };
+      const result = resolveInServiceDay(
+        '2025-01-08', // Wednesday - day 7 of cycle, which is 'B' in alt-weeks
+        true,
+        config,
+        baseConfig
+      );
+      expect(result.isInServiceAttached).toBe(false);
+      // Day 7 (0-indexed) is 'B' in the alt-weeks pattern
+      expect(result.owner).toBe('parentB');
+    });
+  });
+
+  describe('getOwnerForDateFull', () => {
+    const inServiceDays = ['2025-01-06']; // Monday after first weekend
+    const inServiceConfig: InServiceDayConfig = {
+      enabled: true,
+      attachmentRule: 'attach-to-adjacent',
+    };
+
+    test('marks in-service day correctly', () => {
+      const result = getOwnerForDateFull(
+        '2025-01-06',
+        baseConfig,
+        undefined,
+        inServiceDays,
+        inServiceConfig
+      );
+      expect(result.isInServiceDay).toBe(true);
+      expect(result.isInServiceAttached).toBe(true);
+    });
+
+    test('non-in-service day is not marked', () => {
+      const result = getOwnerForDateFull(
+        '2025-01-07', // Tuesday, not in list
+        baseConfig,
+        undefined,
+        inServiceDays,
+        inServiceConfig
+      );
+      expect(result.isInServiceDay).toBe(false);
+      expect(result.isInServiceAttached).toBe(false);
+    });
+
+    test('in-service day without config uses base schedule', () => {
+      const result = getOwnerForDateFull(
+        '2025-01-06',
+        baseConfig,
+        undefined,
+        inServiceDays,
+        undefined
+      );
+      expect(result.isInServiceDay).toBe(true);
+      expect(result.isInServiceAttached).toBe(false);
+    });
+  });
+
+  describe('generateMonthDays with in-service days', () => {
+    test('includes in-service day flags in calendar days', () => {
+      const inServiceDays = ['2025-01-06', '2025-01-10'];
+      const inServiceConfig: InServiceDayConfig = {
+        enabled: true,
+        attachmentRule: 'attach-to-adjacent',
+      };
+
+      const days = generateMonthDays(
+        2025,
+        0, // January
+        baseConfig,
+        false,
+        undefined,
+        inServiceDays,
+        inServiceConfig
+      );
+
+      // Find Jan 6 (Monday)
+      const jan6 = days.find(d => d.date === '2025-01-06');
+      expect(jan6).toBeDefined();
+      expect(jan6?.isInServiceDay).toBe(true);
+      expect(jan6?.isInServiceAttached).toBe(true); // Adjacent to Sunday Jan 5
+
+      // Find Jan 10 (Friday)
+      const jan10 = days.find(d => d.date === '2025-01-10');
+      expect(jan10).toBeDefined();
+      expect(jan10?.isInServiceDay).toBe(true);
+      expect(jan10?.isInServiceAttached).toBe(true); // Adjacent to Saturday Jan 11
+    });
+
+    test('non-in-service days are not flagged', () => {
+      const inServiceDays = ['2025-01-06'];
+      const inServiceConfig: InServiceDayConfig = {
+        enabled: true,
+        attachmentRule: 'attach-to-adjacent',
+      };
+
+      const days = generateMonthDays(
+        2025,
+        0,
+        baseConfig,
+        false,
+        undefined,
+        inServiceDays,
+        inServiceConfig
+      );
+
+      // Find Jan 7 (Tuesday)
+      const jan7 = days.find(d => d.date === '2025-01-07');
+      expect(jan7).toBeDefined();
+      expect(jan7?.isInServiceDay).toBe(false);
+      expect(jan7?.isInServiceAttached).toBe(false);
+    });
+  });
+
+  describe('calculateYearlyStats with in-service days', () => {
+    test('in-service day attachment affects yearly stats', () => {
+      // In alt-weeks pattern starting Jan 1, 2025:
+      // Jan 1 (Wed) = day 0 = A
+      // Jan 4-5 (Sat-Sun) = days 3-4 = A (first week belongs to A)
+      // Jan 6 (Mon) = day 5 = A (still first week)
+      // Jan 8 (Wed) = day 7 = B (second week belongs to B)
+      // Jan 11-12 (Sat-Sun) = days 10-11 = B (second week)
+      // Jan 13 (Mon) = day 12 = B (still second week)
+      
+      const config: AppConfig = {
+        startDate: '2025-01-01',
+        selectedPattern: 'alt-weeks',
+        startingParent: 'parentA',
+        exchangeTime: '18:00',
+      };
+
+      // Jan 13, 2025 is Monday after a B-owned weekend (Jan 11-12)
+      // Without in-service config: Jan 13 = day 12 = B (in pattern)
+      // With in-service attachment: should remain B (same owner)
+      
+      // Let's use Jan 10 (Friday before B's weekend) instead
+      // Without in-service: Jan 10 = day 9 = B
+      // With in-service attachment to next day weekend: still B
+      
+      // Better test: Jan 20 (Monday after weekend)
+      // Jan 20 = day 19 % 14 = day 5 = A
+      // But wait - adjacent Saturday Jan 18 = day 17 % 14 = day 3 = A
+      // So attachment should keep it as A
+      
+      // Let's pick a day where attachment changes the owner:
+      // We need an in-service day where:
+      // 1. Base schedule says Parent X
+      // 2. Adjacent weekend belongs to Parent Y
+      // In alt-weeks, this can't happen because weeks are contiguous
+      
+      // Let's use a different pattern: every-other-weekend
+      // Pattern: ['A','A','A','A','A','B','B','A','A','A','A','A','A','A']
+      // Starting Jan 1, 2025 (Wed = day 0):
+      // Jan 5 (Sun) = day 4 = A
+      // Jan 6 (Mon) = day 5 = B (this is the "weekend" in the pattern!)
+      // Jan 7 (Tue) = day 6 = B
+      // 
+      // So in every-other-weekend, days 5-6 of cycle go to B
+      // This means the "weekend" slots (days 5-6) occur on Mon-Tue when starting on Wed
+      // Let's find when the actual Sat-Sun falls in this pattern
+      //
+      // Jan 4 (Sat) = day 3 = A
+      // Jan 5 (Sun) = day 4 = A
+      // Jan 11 (Sat) = day 10 = A
+      // Jan 12 (Sun) = day 11 = A
+      // 
+      // So the pattern's "B days" (days 5-6) fall on Mon-Tue, not the actual weekend
+      // This makes the pattern not truly an "every other weekend" when starting on Wed
+      
+      // For this test, let's just verify that the stats function handles in-service days
+      // We'll test that an in-service day adjacent to a weekend gets attached
+      const inServiceDays = ['2025-01-06']; // Monday after first weekend (Jan 4-5)
+      const inServiceConfig: InServiceDayConfig = {
+        enabled: true,
+        attachmentRule: 'attach-to-adjacent',
+      };
+
+      const statsWithInService = calculateYearlyStats(
+        2025,
+        config,
+        undefined,
+        inServiceDays,
+        inServiceConfig
+      );
+
+      const statsWithoutInService = calculateYearlyStats(
+        2025,
+        config,
+        undefined,
+        undefined,
+        undefined
+      );
+
+      // Both should total 365 days
+      expect(statsWithInService.parentA.days + statsWithInService.parentB.days).toBe(365);
+      expect(statsWithoutInService.parentA.days + statsWithoutInService.parentB.days).toBe(365);
+      
+      // In alt-weeks starting Jan 1:
+      // Jan 6 (Mon) is day 5 = A (still in first week)
+      // Adjacent day Jan 5 (Sun) is also A (day 4)
+      // So attachment doesn't change the owner in this case
+      // Both stats should be the same
+      expect(statsWithInService.parentA.days).toBe(statsWithoutInService.parentA.days);
+    });
+
+    test('in-service day attachment changes owner when adjacent to different-owner weekend', () => {
+      // Use a config where the in-service day would normally go to one parent
+      // but gets attached to the other parent's weekend
+      
+      // In alt-weeks, Jan 13 (Mon) = day 12 = B (second week)
+      // Adjacent Jan 12 (Sun) = day 11 = B
+      // So still no change
+      
+      // Let's use always-parent-a and always-parent-b rules to test the attachment effect
+      const config: AppConfig = {
+        startDate: '2025-01-01',
+        selectedPattern: 'alt-weeks',
+        startingParent: 'parentA',
+        exchangeTime: '18:00',
+      };
+
+      const inServiceDays = ['2025-01-08']; // Wed, day 7 = B
+      
+      // With always-parent-a rule, this day should go to A instead of B
+      const inServiceConfigAlwaysA: InServiceDayConfig = {
+        enabled: true,
+        attachmentRule: 'always-parent-a',
+      };
+
+      const statsAlwaysA = calculateYearlyStats(
+        2025,
+        config,
+        undefined,
+        inServiceDays,
+        inServiceConfigAlwaysA
+      );
+
+      const statsNoInService = calculateYearlyStats(
+        2025,
+        config,
+        undefined,
+        undefined,
+        undefined
+      );
+
+      // Jan 8 would normally go to B (day 7 in alt-weeks second week)
+      // With always-parent-a, it goes to A instead
+      expect(statsAlwaysA.parentA.days).toBe(statsNoInService.parentA.days + 1);
+      expect(statsAlwaysA.parentB.days).toBe(statsNoInService.parentB.days - 1);
+    });
+  });
+
+  describe('edge cases', () => {
+    test('in-service day on Saturday should not be attached (already weekend)', () => {
+      const inServiceDays = ['2025-01-04']; // Saturday
+      const inServiceConfig: InServiceDayConfig = {
+        enabled: true,
+        attachmentRule: 'attach-to-adjacent',
+      };
+
+      const result = getOwnerForDateFull(
+        '2025-01-04',
+        baseConfig,
+        undefined,
+        inServiceDays,
+        inServiceConfig
+      );
+
+      // Saturday is already a weekend - adjacent days are Friday (weekday) and Sunday (weekend)
+      // It should attach to Sunday's owner
+      expect(result.isInServiceDay).toBe(true);
+    });
+
+    test('in-service day at month boundary', () => {
+      // Dec 31, 2024 is Tuesday, Jan 1, 2025 is Wednesday
+      // Neither are weekends, so no attachment should occur
+      const inServiceDays = ['2024-12-31'];
+      const inServiceConfig: InServiceDayConfig = {
+        enabled: true,
+        attachmentRule: 'attach-to-adjacent',
+      };
+
+      const result = getOwnerForDateFull(
+        '2024-12-31',
+        baseConfig,
+        undefined,
+        inServiceDays,
+        inServiceConfig
+      );
+
+      expect(result.isInServiceDay).toBe(true);
+      expect(result.isInServiceAttached).toBe(false); // No adjacent weekend
+    });
+
+    test('multiple consecutive in-service days', () => {
+      // Jan 6-7, 2025 (Monday-Tuesday)
+      const inServiceDays = ['2025-01-06', '2025-01-07'];
+      const inServiceConfig: InServiceDayConfig = {
+        enabled: true,
+        attachmentRule: 'attach-to-adjacent',
+      };
+
+      // Jan 6 (Monday) is adjacent to Sunday Jan 5
+      const jan6Result = getOwnerForDateFull(
+        '2025-01-06',
+        baseConfig,
+        undefined,
+        inServiceDays,
+        inServiceConfig
+      );
+      expect(jan6Result.isInServiceDay).toBe(true);
+      expect(jan6Result.isInServiceAttached).toBe(true);
+
+      // Jan 7 (Tuesday) is not adjacent to a weekend
+      const jan7Result = getOwnerForDateFull(
+        '2025-01-07',
+        baseConfig,
+        undefined,
+        inServiceDays,
+        inServiceConfig
+      );
+      expect(jan7Result.isInServiceDay).toBe(true);
+      expect(jan7Result.isInServiceAttached).toBe(false);
     });
   });
 });

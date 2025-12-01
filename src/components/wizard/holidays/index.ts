@@ -3,3 +3,4 @@ export { WeekendHolidaysConfig, type WeekendHolidaysConfigProps } from './Weeken
 export { BirthdaysConfig, type BirthdaysConfigProps } from './BirthdaysConfig';
 export { QuickSetupPresets, type QuickSetupPresetsProps } from './QuickSetupPresets';
 export { HolidayImpactPreview, type HolidayImpactPreviewProps } from './HolidayImpactPreview';
+export { ReligiousHolidaysConfig, type ReligiousHolidaysConfigProps } from './ReligiousHolidaysConfig';

@@ -79,6 +79,35 @@ export interface AppConfig {
   exchangeTime: string; // "HH:MM" format
 }
 
+// ============================================================================
+// In-Service Day Configuration
+// ============================================================================
+
+/**
+ * Attachment rule for in-service days.
+ * - 'attach-to-adjacent': Attach to whichever parent has the adjacent holiday/weekend
+ * - 'follow-base-schedule': Follow the base custody schedule (no special handling)
+ * - 'always-parent-a': Always assign to Parent A
+ * - 'always-parent-b': Always assign to Parent B
+ */
+export type InServiceAttachmentRule =
+  | 'attach-to-adjacent'
+  | 'follow-base-schedule'
+  | 'always-parent-a'
+  | 'always-parent-b';
+
+/**
+ * Configuration for in-service day handling.
+ * In-service days (teacher workdays) that are adjacent to holidays/weekends
+ * can be configured to automatically attach to the parent who has that holiday/weekend.
+ */
+export interface InServiceDayConfig {
+  /** Whether in-service day attachment logic is enabled */
+  enabled: boolean;
+  /** How to assign in-service days */
+  attachmentRule: InServiceAttachmentRule;
+}
+
 export interface AppState {
   config: AppConfig;
   parents: {
@@ -88,6 +117,10 @@ export interface AppState {
   holidays?: HolidayState;
   /** Family information including children and plan dates */
   familyInfo: FamilyInfo;
+  /** Array of in-service day dates in ISO format (YYYY-MM-DD) */
+  inServiceDays?: string[];
+  /** Configuration for in-service day handling */
+  inServiceConfig?: InServiceDayConfig;
 }
 
 export interface CalendarDay {
@@ -100,6 +133,10 @@ export interface CalendarDay {
   holidayName?: string;
   /** Whether this day's owner is due to a holiday override */
   isHolidayOverride?: boolean;
+  /** Whether this day is an in-service day (teacher workday) */
+  isInServiceDay?: boolean;
+  /** Whether this day's ownership is due to in-service attachment rule */
+  isInServiceAttached?: boolean;
 }
 
 export interface TimeshareStats {

@@ -10,7 +10,7 @@ import {
   type Dispatch,
 } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import type { AppState, AppConfig, ParentConfig, PatternType, HolidayState, FamilyInfo, Child } from '../types';
+import type { AppState, AppConfig, ParentConfig, PatternType, HolidayState, FamilyInfo, Child, InServiceDayConfig } from '../types';
 import { createDefaultHolidayConfigs, createDefaultBirthdayConfigs } from '../data/holidays';
 
 /**
@@ -33,6 +33,10 @@ export type AppStateAction =
   | { type: 'ADD_CHILD'; payload: Child }
   | { type: 'REMOVE_CHILD'; payload: string } // payload is child id
   | { type: 'UPDATE_CHILD'; payload: Child }
+  | { type: 'SET_IN_SERVICE_DAYS'; payload: string[] }
+  | { type: 'ADD_IN_SERVICE_DAY'; payload: string }
+  | { type: 'REMOVE_IN_SERVICE_DAY'; payload: string }
+  | { type: 'SET_IN_SERVICE_CONFIG'; payload: InServiceDayConfig }
   | { type: 'RESET' }
   | { type: 'LOAD_STATE'; payload: AppState };
 
@@ -67,6 +71,16 @@ function getDefaultFamilyInfo(): FamilyInfo {
 }
 
 /**
+ * Get default in-service day configuration.
+ */
+function getDefaultInServiceConfig(): InServiceDayConfig {
+  return {
+    enabled: false,
+    attachmentRule: 'attach-to-adjacent',
+  };
+}
+
+/**
  * Default initial state for the application.
  * Used when no saved state exists in localStorage.
  */
@@ -83,6 +97,8 @@ export const initialAppState: AppState = {
   },
   holidays: getDefaultHolidayState(),
   familyInfo: getDefaultFamilyInfo(),
+  inServiceDays: [],
+  inServiceConfig: getDefaultInServiceConfig(),
 };
 
 /**
@@ -148,6 +164,24 @@ export function appStateReducer(state: AppState, action: AppStateAction): AppSta
           ),
         },
       };
+    case 'SET_IN_SERVICE_DAYS':
+      return { ...state, inServiceDays: action.payload };
+    case 'ADD_IN_SERVICE_DAY':
+      return {
+        ...state,
+        inServiceDays: state.inServiceDays
+          ? [...state.inServiceDays.filter(d => d !== action.payload), action.payload].sort()
+          : [action.payload],
+      };
+    case 'REMOVE_IN_SERVICE_DAY':
+      return {
+        ...state,
+        inServiceDays: state.inServiceDays
+          ? state.inServiceDays.filter(d => d !== action.payload)
+          : [],
+      };
+    case 'SET_IN_SERVICE_CONFIG':
+      return { ...state, inServiceConfig: action.payload };
     case 'RESET':
       return initialAppState;
     case 'LOAD_STATE':
