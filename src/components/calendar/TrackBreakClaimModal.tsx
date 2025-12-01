@@ -54,36 +54,35 @@ export function TrackBreakClaimModal({
   const [selectedParent, setSelectedParent] = useState<ParentId | null>(null);
   const [validation, setValidation] = useState<{ valid: boolean; reason?: string }>({ valid: true });
 
-  // Freeze today's date at component mount to avoid stale closures
-  // This is intentional - the claim date should be when the user opened the modal
+  // Freeze today's date at component mount for consistent display
+  // We use this for displaying "days until break" but recalculate for actual validation/claims
   const today = useMemo(() => getTodayDateString(), []);
   const weeks = calculateWeeks(trackBreak.startDate, trackBreak.endDate);
   const daysUntilBreak = daysBetween(trackBreak.startDate, today);
 
-  // Parent names for error messages
+  // Parent names for error messages - use defaults to ensure they're never undefined
   const parentNames = useMemo(() => ({
-    parentA: parentAName,
-    parentB: parentBName,
+    parentA: parentAName ?? 'Parent A',
+    parentB: parentBName ?? 'Parent B',
   }), [parentAName, parentBName]);
 
   // Validate on mount and when track break or selected parent changes
-  // Note: today is intentionally excluded from deps - we want to freeze it at mount
+  // Uses the memoized today value for validation since modal won't typically stay open past midnight
   useEffect(() => {
-    const currentDate = getTodayDateString(); // Recalculate for validation
     if (selectedParent) {
-      const result = canClaimVacation(trackBreak, selectedParent, currentDate, noticeDeadline, parentNames);
+      const result = canClaimVacation(trackBreak, selectedParent, today, noticeDeadline, parentNames);
       setValidation(result);
     } else {
       // Pre-validate to check deadline even before parent selection
-      const result = canClaimVacation(trackBreak, 'parentA', currentDate, noticeDeadline, parentNames);
+      const result = canClaimVacation(trackBreak, 'parentA', today, noticeDeadline, parentNames);
       setValidation(result);
     }
-  }, [trackBreak, selectedParent, noticeDeadline, parentNames]);
+  }, [trackBreak, selectedParent, today, noticeDeadline, parentNames]);
 
   const handleClaim = () => {
     if (!selectedParent || !validation.valid) return;
-    const claimDate = getTodayDateString(); // Use fresh date for the actual claim
-    onClaim(trackBreak.id, selectedParent, claimDate, weeks);
+    // Use the memoized today value - this is the date when the user opened the modal
+    onClaim(trackBreak.id, selectedParent, today, weeks);
     onClose();
   };
 
